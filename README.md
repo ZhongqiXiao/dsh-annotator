@@ -25,7 +25,7 @@
 
 ## 安装（DeepSeek Harness Desktop）
 
-### 方式 A：从 npm 安装（推荐，发布后可用）
+### 方式 A：从 npm 安装（推荐）
 
 ```bash
 dsh plugin --profile desktop add dsh-visual-annotator
@@ -65,16 +65,6 @@ dsh plugin --profile desktop add dsh-visual-annotator
 ## Agent 侧
 
 插件向 agent 注册 `visual_annotator_read` 工具：传入 `ids` 可按标注 id 精确读取，不传则返回当前全部标注（selector、URL、坐标尺寸、文本摘录、评论、截图路径）。收到 `标注 #pN` 引用时务必调用该工具获取完整上下文。
-
-## 发布（维护者）
-
-推送到 npm 由 GitHub Actions 自动完成：打 tag `v*`（如 `v0.1.0`）触发 `.github/workflows/release.yml`，自动 `npm pack`、创建 GitHub Release 并附 tarball、发布到 npm。需在仓库 Settings → Secrets → Actions 配置 `NPM_TOKEN`。也可手动发布：
-
-```bash
-npm publish
-```
-
-DSH 没有「插件专用仓库」——插件发现走标准 npm 协议（任意 npm spec：版本号、`link:`、Git URL 均可），所以发布到 npm 即完成了分发。
 
 ## License
 
