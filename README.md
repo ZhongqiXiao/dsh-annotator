@@ -1,35 +1,76 @@
-# dsh-visual-picker
+# dsh-visual-annotator
 
-A [DeepSeek Harness](https://github.com/deepseek-ai) desktop plugin: pick, annotate, comment on and screenshot elements of a **real Chrome / Edge page**, then hand the element locator + comment + screenshot to the agent — so the agent can make visual front-end fixes against what you actually see.
+一个 [DeepSeek Harness](https://www.deepseek.com) Desktop 插件：在**真实的 Chrome / Edge 页面**上拾取、标注、评论、截图页面元素，并把元素定位 + 评论 + 截图一并交给 agent —— 让 agent 按照「你实际看到的页面」做前端可视化修改。
 
-Think "ChatGPT / Codex built-in browser, but driven by your own browser and wired into the DSH GUI composer".
+类似 ChatGPT / Codex 的内置浏览功能，但驱动的是你自己的浏览器，并深度接入 DSH GUI 的输入框（引用芯片机制）。
 
-## Features
+## 功能特性
 
-- **Element picker overlay** — hover highlight, click to pick; the overlay is injected into the live page (shadow DOM, no page pollution).
-- **Per-element capture** — unique CSS selector, page URL, viewport position & size, text excerpt and an element screenshot.
-- **Comments** — attach a comment to every pick; everything is bundled into a structured reference.
-- **Reference chips** — inserts a real composer chip (`标注 #pN`) into the DSH GUI composer; on submit it expands into the full locator block (selector · URL · coordinates · comment · screenshot path). Falls back to plain-text insertion if the chip pipeline is unavailable.
-- **Browser adoption** — launches Chrome/Edge with a dedicated profile, or **adopts an already-running instance** on the same profile; same-window tab navigation (no duplicate windows); live tab list with switching in the panel.
-- **Screenshot pipeline** — per-element shots stored locally and attached as real composer image attachments.
+- **元素拾取层**：hover 高亮、点击拾取；拾取层以 Shadow DOM 注入页面，不污染页面样式。
+- **元素级捕获**：唯一 CSS selector、页面 URL、视口坐标与尺寸、文本摘录、元素截图。
+- **评论标注**：每个拾取元素可附评论，连同定位信息打包成结构化引用。
+- **引用芯片**：向 DSH GUI 输入框插入真实 composer chip（`标注 #pN`）；提交时自动展开为完整定位块（selector · URL · 坐标 · 评论 · 截图路径），chip 管线不可用时自动回退纯文本插入。
+- **浏览器接管**：以专用 profile 启动 Chrome/Edge；同 profile 已有实例则直接**接管**，不重复开窗；同窗口多标签页导航，面板内实时标签列表可切换。
+- **截图管线**：元素截图存本地并作为真实 composer 图片附件插入。
 
-## Install
-
-Copy (or clone) this folder into your DSH workspace as `dsh-visual-picker/`, then register the loader in your `cordis.patch.yml` (see `cordis.patch.yml` in this repo). Restart DSH desktop; the panel appears in the right sidebar. The panel auto-refreshes when the host revision changes.
-
-## Usage
-
-1. Open the **Visual Picker** panel in the DSH GUI sidebar.
-2. Enter a URL and click **在 Chrome 中调试** (Debug in Chrome) — a real Chrome window opens (or the existing one is adopted).
-3. Toggle **拾取模式** (pick mode), hover to highlight, click an element to capture it.
-4. Type a comment for the element, then **插入引用** (insert reference) — a chip plus element screenshot land in the composer.
-5. Submit; the agent receives the structured locator and can edit the front-end code accordingly. The agent-side tool is `visual_picker_read`.
-
-## Requirements
+## 环境要求
 
 - Node.js >= 22
-- DSH desktop (web client platform)
-- Chrome or Edge installed locally
+- DeepSeek Harness Desktop（web 客户端平台）
+- 本机装有 Chrome 或 Edge
+
+## 安装（DeepSeek Harness Desktop）
+
+### 方式 A：从 npm 安装（推荐，发布后可用）
+
+```bash
+dsh plugin --profile desktop add dsh-visual-annotator
+```
+
+该命令会把包加入 `~/.dsh/profiles/desktop/package.json` 的 `dependencies`，并加入 `dsh.profile.bundles` 启用列表。
+
+### 方式 B：本地目录（开发模式）
+
+把本仓库克隆到任意位置，然后在 `~/.dsh/profiles/desktop/package.json` 中：
+
+```jsonc
+{
+  "dependencies": {
+    "dsh-visual-annotator": "link:C:/path/to/dsh-visual-annotator"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": ["dsh-visual-annotator"]
+    }
+  }
+}
+```
+
+### 生效
+
+重启 DSH Desktop。GUI 右侧边栏出现「元素标注」面板即安装成功；面板通过版本号自动热刷新（HOST_REV），后续升级只需更新包再重启。
+
+## 使用流程
+
+1. 打开 DSH GUI 右侧边栏的 **元素标注** 面板。
+2. 输入地址，点击 **在 Chrome 中调试** —— 打开真实 Chrome 窗口（或接管已有实例）。
+3. 开启 **拾取模式**，hover 高亮元素，点击完成拾取。
+4. 为该元素填写评论，点击 **插入引用** —— 输入框里出现引用芯片 + 元素截图附件。
+5. 正常提交对话；agent 收到完整定位信息（`visual_annotator_read` 工具可按 `标注 #id` 读取全部详情），随后即可对照页面修改前端代码。
+
+## Agent 侧
+
+插件向 agent 注册 `visual_annotator_read` 工具：传入 `ids` 可按标注 id 精确读取，不传则返回当前全部标注（selector、URL、坐标尺寸、文本摘录、评论、截图路径）。收到 `标注 #pN` 引用时务必调用该工具获取完整上下文。
+
+## 发布（维护者）
+
+推送到 npm 由 GitHub Actions 自动完成：打 tag `v*`（如 `v0.1.0`）触发 `.github/workflows/release.yml`，自动 `npm pack`、创建 GitHub Release 并附 tarball、发布到 npm。需在仓库 Settings → Secrets → Actions 配置 `NPM_TOKEN`。也可手动发布：
+
+```bash
+npm publish
+```
+
+DSH 没有「插件专用仓库」——插件发现走标准 npm 协议（任意 npm spec：版本号、`link:`、Git URL 均可），所以发布到 npm 即完成了分发。
 
 ## License
 
