@@ -11,7 +11,9 @@
 | POST | `/navigate` | 当前 Tab 跳转 `{ url }`                                                        |
 | POST | `/tab`      | 切换活动 Tab `{ targetId }`                                                    |
 | POST | `/comment`  | 写入某标注评论 `{ id, comment }`                                               |
-| POST | `/remove`   | 删除标注 `{ id }`                                                              |
+| POST | `/remove`   | 删除标注 `{ id }`（截图文件延迟释放，供 `/restore` 撤销）                     |
+| POST | `/restore`  | 撤销最近一次删除，返回 `{ ok, restored, ...snapshot }`                        |
+| POST | `/focus`    | 在浏览器中定位某标注 `{ id }`，返回 `{ ok, focused, ...snapshot }`           |
 | POST | `/clear`    | 清空全部标注                                                                   |
 | POST | `/close`    | 关闭调试浏览器                                                                 |
 | GET  | `/shot?id=` | 取某标注截图 PNG                                                               |
