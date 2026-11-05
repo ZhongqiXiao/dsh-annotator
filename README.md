@@ -1,5 +1,9 @@
 # dsh-visual-annotator
 
+#dsh-visual-annotator
+
+[![CI](https://github.com/ZhongqiXiao/dsh-visual-annotator/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhongqiXiao/dsh-visual-annotator/actions/workflows/ci.yml)
+
 一个 [DeepSeek Harness](https://www.deepseek.com) Desktop 插件：在**真实的 Chrome / Edge 页面**上拾取、标注、评论、截图页面元素，并把元素定位 + 评论 + 截图一并交给 agent —— 让 agent 按照「你实际看到的页面」做前端可视化修改。
 
 类似 ChatGPT / Codex 的内置浏览功能，但驱动的是你自己的浏览器，并深度接入 DSH GUI 的输入框（引用芯片机制）。
@@ -35,14 +39,14 @@ dsh plugin --profile desktop add dsh-visual-annotator
 
 ```jsonc
 {
-  "dependencies": {
-    "dsh-visual-annotator": "link:C:/path/to/dsh-visual-annotator"
-  },
-  "dsh": {
-    "profile": {
-      "bundles": ["dsh-visual-annotator"]
-    }
-  }
+	"dependencies": {
+		"dsh-visual-annotator": "link:C:/path/to/dsh-visual-annotator",
+	},
+	"dsh": {
+		"profile": {
+			"bundles": ["dsh-visual-annotator"],
+		},
+	},
 }
 ```
 
@@ -75,3 +79,10 @@ DSH 没有「插件专用仓库」——插件发现走标准 npm 协议（任�
 ## License
 
 MIT
+
+## 工程门径
+
+- `npm run verify`：语法检查（node --check）+ ESLint + 单元测试（node --test），提交前必跑；CI 在 PR/push 上强制执行。
+- 代码规范：ESLint（host/browser 双环境区分）+ Prettier + `.editorconfig`。
+- 面向 AI 代理的协作文档：[`AGENTS.md`](AGENTS.md)（工作约定与硬性约束）、[`docs/API.md`](docs/API.md)（插件 API 契约）。
+- 发布：`v*` tag 触发，CI 校验 tag↔package.json 版本一致并跑通门径后自动出 GitHub Release；详见 [`CHANGELOG.md`](CHANGELOG.md)。

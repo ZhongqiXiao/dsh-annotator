@@ -2,49 +2,63 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
-  workflow_dispatch:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
+  guard:
+    name: Version guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches package.json version
+        run: |
+          set -euo pipefail
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "::error::package.json version ($PKG_VERSION) does not match tag $GITHUB_REF_NAME"
+            exit 1
+          fi
+          echo "Version guard passed: $PKG_VERSION"
+
   check:
+    name: Verify before publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Syntax check all modules
-        run: |
-          for f in lib/*.js; do node --check "$f"; done
-      - name: Validate package manifest
-        run: node -e "const p=require('./package.json'); if(!p.dsh||!p.dsh.bundle||!p.dsh.bundle.patch) throw new Error('missing dsh.bundle.patch'); console.log(p.name, p.version)"
+      - run: npm install --no-audit --no-fund
+      - run: npm run verify
+      - name: Manifest integrity
+        run: grep -q "dsh-visual-annotator" cordis.patch.yml
 
   publish:
-    needs: check
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [guard, check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org/
       - name: Pack
-        run: npm pack
-      - name: Create GitHub Release with tarball
+        run: npm pack --pack-destination ./dist
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "${GITHUB_REF_NAME}" ./*.tgz --title "${GITHUB_REF_NAME}" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/*.tgz --title "$GITHUB_REF_NAME" --generate-notes
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo 'NPM_TOKEN secret not configured; skipping npm publish (GitHub Release already created)'
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::warning::NPM_TOKEN secret not configured; skipping npm publish (GitHub Release still created)"
             exit 0
           fi
-          npm publish --access public
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+          npm publish
