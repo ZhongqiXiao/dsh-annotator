@@ -47,7 +47,11 @@ jobs:
         with:
           node-version: 22
       - name: Pack
-        run: npm pack --pack-destination ./dist
+        run: |
+          mkdir -p dist
+          npm pack --pack-destination ./dist
+          tar -tzf dist/*.tgz | grep -q '^package/lib/index.js$'
+          echo "Packed: $(ls dist)"
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
