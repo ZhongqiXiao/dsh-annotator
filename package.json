@@ -1,44 +1,48 @@
 {
-	"name": "dsh-visual-annotator",
-	"version": "0.1.0",
-	"description": "Visual element picker for DSH: highlight, annotate, comment and screenshot elements of a real Chrome/Edge page, then hand the selector + comment + shot to the agent.",
-	"type": "module",
-	"main": "./lib/index.js",
-	"exports": {
-		".": "./lib/index.js",
-		"./client": "./lib/client.js",
-		"./package.json": "./package.json"
-	},
-	"files": [
-		"lib/",
-		"cordis.patch.yml"
-	],
-	"dsh": {
-		"bundle": {
-			"patch": "./cordis.patch.yml"
-		},
-		"client": {
-			"platform": "web",
-			"immediately": true,
-			"inject": []
-		}
-	},
-	"engines": {
-		"node": ">=22"
-	},
-	"license": "MIT",
-	"scripts": {
-		"test": "node --test",
-		"lint": "eslint .",
-		"lint:fix": "eslint . --fix",
-		"format": "prettier --write .",
-		"format:check": "prettier --check .",
-		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js",
-		"verify": "npm run check && npm run lint && npm test"
-	},
-	"devDependencies": {
-		"eslint": "^9",
-		"globals": "^15",
-		"prettier": "^3"
-	}
+  "name": "dsh-visual-annotator",
+  "version": "0.1.0",
+  "description": "Visual element picker for DSH: highlight, annotate, comment and screenshot elements of a real Chrome/Edge page, then hand the selector + comment + shot to the agent.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZhongqiXiao/dsh-visual-annotator.git"
+  },
+  "scripts": {
+    "test": "node --test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js",
+    "verify": "npm run check && npm run lint && npm test"
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "globals": "^15",
+    "prettier": "^3"
+  }
 }
