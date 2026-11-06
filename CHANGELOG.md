@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **发版资产多一份不带版本号的文件名**：`npm pack` 之后额外复制成 `dist/dsh-visual-annotator.tgz` 一起上传，供市场列表的 `releases/latest/download/dsh-visual-annotator.tgz` 链接使用——`latest` 只解析重定向、文件名照字面取，带版本号的名字在下一次发版后会 404。
+
 ## [0.3.0] - 2026-11-06
 
 ### Added
