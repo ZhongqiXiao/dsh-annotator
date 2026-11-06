@@ -51,6 +51,10 @@ jobs:
           mkdir -p dist
           npm pack --pack-destination ./dist
           tar -tzf dist/*.tgz | grep -q '^package/lib/index.js$'
+          # 额外产出一份不带版本号的资产名：市场列表用它拼
+          # releases/latest/download/dsh-visual-annotator.tgz —— 带版本号的文件名
+          # 在 latest 链接里解析到的仍是旧版本，下一次发版就会 404。
+          cp "$(ls dist/*.tgz | head -n1)" dist/dsh-visual-annotator.tgz
           echo "Packed: $(ls dist)"
       - name: Create GitHub Release
         env:
