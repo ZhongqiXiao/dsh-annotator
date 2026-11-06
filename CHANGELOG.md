@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **商店图标**：新增 `assets/icon-180.png`（180×180，市场卡片用的 GitHub 托管位图）与可复现的生成脚本 `scripts/make-icon.py`；图标由 Pillow 4 倍超采样后降采样得到，无需设计源文件。
+
 ### Changed
 
 - **发版资产多一份不带版本号的文件名**：`npm pack` 之后额外复制成 `dist/dsh-visual-annotator.tgz` 一起上传，供市场列表的 `releases/latest/download/dsh-visual-annotator.tgz` 链接使用——`latest` 只解析重定向、文件名照字面取，带版本号的名字在下一次发版后会 404。
