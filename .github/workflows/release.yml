@@ -48,18 +48,58 @@ jobs:
           node-version: 22
       - name: Pack
         run: |
+          set -euo pipefail
           mkdir -p dist
           npm pack --pack-destination ./dist
-          tar -tzf dist/*.tgz | grep -q '^package/lib/index.js$'
+          VERSIONED="$(ls dist/*.tgz | head -n1)"
+          # 先落盘再 grep：grep -q 命中即退出，会让 tar 收到 SIGPIPE(141)，pipefail 下被误判为失败
+          tar -tzf "$VERSIONED" > listing.txt
+          grep -qx 'package/lib/index.js' listing.txt
           # 额外产出一份不带版本号的资产名：市场列表用它拼
           # releases/latest/download/dsh-visual-annotator.tgz —— 带版本号的文件名
           # 在 latest 链接里解析到的仍是旧版本，下一次发版就会 404。
-          cp "$(ls dist/*.tgz | head -n1)" dist/dsh-visual-annotator.tgz
+          cp "$VERSIONED" dist/dsh-visual-annotator.tgz
+          # 两份必须字节一致：否则市场按无版本名装到的和 Release 里挂的不是同一个包
+          [ "$(sha256sum "$VERSIONED" | cut -d' ' -f1)" = "$(sha256sum dist/dsh-visual-annotator.tgz | cut -d' ' -f1)" ]
           echo "Packed: $(ls dist)"
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.tgz --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          set -euo pipefail
+          # 重跑时 release 已存在，直接补传资产（--clobber），否则 gh 会报 already exists 而卡住修复
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/*.tgz --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/*.tgz --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+      - name: Verify market tarball is reachable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REPO="$GITHUB_REPOSITORY"
+          # 市场条目把 URL 写死成 releases/latest/download/<无版本名>：
+          # 资产名少一个字符、或 latest 指向别的 release，都是静默 404，
+          # 只有真的下载一次才能证明这个链接可用。
+          gh release view "$GITHUB_REF_NAME" --repo "$REPO" --json assets --jq '.assets[].name' | tee assets.txt
+          grep -qx 'dsh-visual-annotator.tgz' assets.txt || {
+            echo "::error::release $GITHUB_REF_NAME 缺少无版本号资产 dsh-visual-annotator.tgz"
+            exit 1
+          }
+          URL="https://github.com/$REPO/releases/latest/download/dsh-visual-annotator.tgz"
+          # latest 的重定向在 release 刚建好时可能还没生效，重试几次再判失败
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL "$URL" -o market.tgz && [ -s market.tgz ]; then
+              break
+            fi
+            echo "attempt $attempt: $URL 尚未就绪，5s 后重试"
+            sleep 5
+          done
+          test -s market.tgz || { echo "::error::$URL 下载不到内容"; exit 1; }
+          tar -tzf market.tgz > listing.txt
+          grep -qx 'package/lib/index.js' listing.txt
+          echo "OK: $URL 可下载且是有效包"
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

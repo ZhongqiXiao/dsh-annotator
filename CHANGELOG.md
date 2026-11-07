@@ -10,6 +10,7 @@
 
 ### Changed
 
+- **发版流水线校验无版本号资产真的能下载**（`release.yml`）：市场条目把 tarball 写死成 `releases/latest/download/dsh-visual-annotator.tgz`，资产名对不上或 `latest` 指向别的 release 都是静默 404。现在 Pack 阶段校验两份 tgz 的 sha256 一致，发布后新增一步：列出 release 资产确认存在无版本号文件，再用 `curl` 真实下载该 URL（`latest` 重定向未生效时重试 5 次）并检查包内 `package/lib/index.js`。同时让创建 Release 幂等——已存在就走 `gh release upload --clobber`，校验失败重跑即可自愈。
 - **发版资产多一份不带版本号的文件名**：`npm pack` 之后额外复制成 `dist/dsh-visual-annotator.tgz` 一起上传，供市场列表的 `releases/latest/download/dsh-visual-annotator.tgz` 链接使用——`latest` 只解析重定向、文件名照字面取，带版本号的名字在下一次发版后会 404。
 
 ## [0.3.0] - 2026-11-06
