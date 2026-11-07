@@ -54,7 +54,10 @@ jobs:
           VERSIONED="$(ls dist/*.tgz | head -n1)"
           # 先落盘再 grep：grep -q 命中即退出，会让 tar 收到 SIGPIPE(141)，pipefail 下被误判为失败
           tar -tzf "$VERSIONED" > listing.txt
-          grep -qx 'package/lib/index.js' listing.txt
+          grep -qx 'package/lib/index.js' listing.txt || {
+            echo "::error::npm pack 产物缺少 package/lib/index.js（files 字段或到包丢失？）"
+            exit 1
+          }
           # 额外产出一份不带版本号的资产名：市场列表用它拼
           # releases/latest/download/dsh-visual-annotator.tgz —— 带版本号的文件名
           # 在 latest 链接里解析到的仍是旧版本，下一次发版就会 404。
@@ -98,7 +101,10 @@ jobs:
           done
           test -s market.tgz || { echo "::error::$URL 下载不到内容"; exit 1; }
           tar -tzf market.tgz > listing.txt
-          grep -qx 'package/lib/index.js' listing.txt
+          grep -qx 'package/lib/index.js' listing.txt || {
+            echo "::error::$URL 下载到的不是有效插件包（缺少 package/lib/index.js）"
+            exit 1
+          }
           echo "OK: $URL 可下载且是有效包"
       - name: Publish to npm
         env:
