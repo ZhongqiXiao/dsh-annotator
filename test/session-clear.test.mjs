@@ -11,13 +11,13 @@ function seed(picks) {
 	return picker;
 }
 
-test('clear() empties the whole list in one call and keeps it restorable as one batch', () => {
+test('clear() empties the whole list in one call and keeps it restorable as one batch', async () => {
 	const picker = seed([
 		{ id: 1, seq: 1 },
 		{ id: 2, seq: 2 },
 		{ id: 3, seq: 3 },
 	]);
-	const cleared = picker.clear();
+	const cleared = await picker.clear();
 	assert.equal(cleared.cleared, 3);
 	assert.deepEqual(cleared.picks, []);
 	assert.equal(picker.retired.length, 3);
@@ -30,9 +30,9 @@ test('clear() empties the whole list in one call and keeps it restorable as one 
 	assert.equal(picker.retired.length, 0);
 });
 
-test('cleared picks still answer findPick/readablePicks so pasted chips keep expanding', () => {
+test('cleared picks still answer findPick/readablePicks so pasted chips keep expanding', async () => {
 	const picker = seed([{ id: 4, seq: 4, selector: '#title', comment: '字体太小' }]);
-	picker.clear();
+	await picker.clear();
 	assert.equal(picker.findPick('4')?.comment, '字体太小');
 	assert.equal(picker.findPick(4)?.selector, '#title');
 	assert.deepEqual(
@@ -41,10 +41,10 @@ test('cleared picks still answer findPick/readablePicks so pasted chips keep exp
 	);
 });
 
-test('clear() on an empty list is a no-op and leaves the archive untouched', () => {
+test('clear() on an empty list is a no-op and leaves the archive untouched', async () => {
 	const picker = seed([{ id: 5, seq: 5 }]);
-	picker.clear();
-	const again = picker.clear();
+	await picker.clear();
+	const again = await picker.clear();
 	assert.equal(again.cleared, 0);
 	assert.equal(picker.retired.length, 1);
 	assert.equal(picker.restorePick().restored, 1);
@@ -56,11 +56,11 @@ test('clear() keeps screenshots for the undo and drops them when the window clos
 	fs.writeFileSync(shot, 'png');
 	const picker = seed([{ id: 1, seq: 1, shotPath: shot }]);
 	try {
-		picker.clear();
+		await picker.clear();
 		assert.equal(fs.existsSync(shot), true);
 		picker.restorePick();
 		assert.equal(fs.existsSync(shot), true);
-		picker.clear();
+		await picker.clear();
 		await picker.close();
 		assert.equal(fs.existsSync(shot), false);
 	} finally {

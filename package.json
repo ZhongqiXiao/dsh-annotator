@@ -1,6 +1,6 @@
 {
 	"name": "dsh-visual-annotator",
-	"version": "0.3.1",
+	"version": "0.4.0",
 	"description": "Visual element picker for DSH: highlight, annotate, comment and screenshot elements of a real Chrome/Edge page, then hand the selector + comment + shot to the agent.",
 	"type": "module",
 	"main": "./lib/index.js",
@@ -37,7 +37,7 @@
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js",
+		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js && node --check lib/shared/binding-action.js && node --check lib/shared/pick-actions.js",
 		"verify": "npm run check && npm run lint && npm run format:check && npm test"
 	},
 	"devDependencies": {
