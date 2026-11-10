@@ -36,7 +36,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run verify
       - name: Manifest integrity
-        run: grep -q "dsh-visual-annotator" cordis.patch.yml
+        run: grep -q "dsh-annotator" cordis.patch.yml
 
   publish:
     needs: [guard, check]
