@@ -9,3 +9,4 @@ shots/
 
 # 部门分享材料（本地产物，不入仓）
 share/
+.archify/
