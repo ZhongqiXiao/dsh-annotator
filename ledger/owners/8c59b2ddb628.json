@@ -1,7 +1,7 @@
 {
   "identity": {"uuid": "5945a5b8-02da-4388-a6df-9998187717f1"},
   "tasks": {
-    "20261110-1727-ce09-ai-native-门禁与自动化闭环改造": {"category": "工程治理", "created": "2026-11-10 17:27:45", "creator": "5945a5b8-02da-4388-a6df-9998187717f1", "creator_name": "xzq", "finished": null, "owner": "5945a5b8-02da-4388-a6df-9998187717f1", "owner_name": "xzq", "started": "2026-11-10 17:27:45", "status": "doing", "tags": ["AI-Native", "门禁", "自动化", "CI"], "title": "AI-Native 门禁与自动化闭环改造", "updated": "2026-11-10 17:50:51", "worklog": "worklog/202611/10-1727-ce09-ai-native-门禁与自动化闭环改造.md"}
+    "20261110-1727-ce09-ai-native-门禁与自动化闭环改造": {"category": "工程治理", "created": "2026-11-10 17:27:45", "creator": "5945a5b8-02da-4388-a6df-9998187717f1", "creator_name": "xzq", "finished": null, "owner": "5945a5b8-02da-4388-a6df-9998187717f1", "owner_name": "xzq", "started": "2026-11-10 17:27:45", "status": "doing", "tags": ["AI-Native", "门禁", "自动化", "CI"], "title": "AI-Native 门禁与自动化闭环改造", "updated": "2026-11-10 17:59:44", "worklog": "worklog/202611/10-1727-ce09-ai-native-门禁与自动化闭环改造.md"}
   },
   "version": "20261022000000"
 }
