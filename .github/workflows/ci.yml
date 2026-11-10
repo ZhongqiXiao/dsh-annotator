@@ -19,8 +19,25 @@ concurrency:
 
 jobs:
   verify:
-    name: Lint, syntax check and unit tests
+    name: Verify (check, lint, format, tests, gates, canary)
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # 历史递增门禁需要完整历史（HOST_REV/PANEL_BUILD/REV 三契约）
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify
+        run: npm run verify
+
+  e2e:
+    name: Browser e2e (best effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,14 +45,8 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Lint
-        run: npm run lint
-      - name: Syntax check
-        run: npm run check
-      - name: Unit tests
-        run: npm test
-      - name: Format check
-        run: npm run format:check
+      - name: E2E
+        run: npm run test:e2e
 
   manifest:
     name: Plugin manifest integrity
