@@ -51,7 +51,9 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 - **物理拦截优先于文档约定**：「写在这但没人查」的约束必然翻车。本仓把最容易翻车的两类契约（三版本标记、注入脚本运行时）做成了物理门禁（`scripts/check-build-sync.mjs`、`scripts/check-embedded-runtime.mjs`），CI 与收尾钩子都会跑。
 - **canary 自证**：`npm run canary` 注入 5 类合成违规（版本 skew、process 泄漏、载荷 require、漏递增的 client / 载荷改动），门禁必须真判失败——从未失败过的门禁得 0 分。
 - **收尾钩子**：agent 会话收尾前自动执行 `npm run verify`（`hooks/verify-before-finish.mjs`，注册于 `.claude/settings.json` 的 Stop hook），未全绿会被拦下并给出对号入座的修复指南。
-- **issue → 修复 → 验证闭环**：bug 模板（`.github/ISSUE_TEMPLATE/bug.md`）要求验收标准写成可执行断言（这是自动验证契约）；带 `ai-fix` 标签的 issue 可交给编码 agent 认领，PR 模板用 `Resolves #N` 绑定 issue，合并即闭环。
+- **issue → 修复 → 验证闭环**：bug 模板（`.github/ISSUE_TEMPLATE/bug.md`）要求验收标准写成可执行断言（这是自动验证契约）。`ai-fix` 标签 = agent-ready 契约 + 派单触发，两条领取路径：
+  - **自动派单**：打上 `ai-fix` 标签后，`.github/workflows/ai-fix-dispatch.yml` 把 issue 指派给 GitHub Copilot coding agent，由它开分支、开 Draft PR；首个 PR 需人工批准一次，之后 CI verify 自动验证。一次性配置见 [docs/AI-FIX.md](docs/AI-FIX.md)。
+  - **本地认领**：编码 agent 会话执行 `gh issue list --label ai-fix` 认领，按验收标准修复，PR 用 `Resolves #N` 绑定 issue，合并即闭环。
 - **成熟度评分**：`npm run assess` 按 6 维（治理 15 / 物理拦截 25 / 架构边界 15 / 契约同步 15 / 工作流自动化 20 / 验证测试 10）实跑取证评分，≥90 Exemplar、≥75 AI-Ready；报告落 `docs/ai-native-health-report.md`。
 
 ## 任务台账

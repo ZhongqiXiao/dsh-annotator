@@ -1,0 +1,43 @@
+name: AI fix dispatch
+
+# ai-fix 标签即派单触发：把 issue 指派给 Copilot coding agent，由它开分支、写代码、开 Draft PR。
+# 一次性配置（repo 启用 coding agent + COPILOT_ASSIGN_TOKEN secret + 创建 ai-fix 标签）见 docs/AI-FIX.md。
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: ai-fix-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  assign-copilot:
+    name: Assign issue to Copilot coding agent
+    if: github.event.label.name == 'ai-fix'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Look up the Copilot actor and assign it
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_ASSIGN_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          ISSUE_ID: ${{ github.event.issue.node_id }}
+        run: |
+          set -euo pipefail
+          COPILOT_ID="$(gh api graphql \
+            -H 'GraphQL-Features: issues_copilot_assignment_api_support,coding_agent_model_selection' \
+            -f query='query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo){assignableUsers(first:100){nodes{__typename login id}}}}' \
+            -f owner="$OWNER" -f repo="$REPO" \
+            --jq '.data.repository.assignableUsers.nodes[] | select(.__typename=="Bot" and (.login|test("copilot";"i"))) | .id' | head -n1)"
+          if [ -z "$COPILOT_ID" ]; then
+            echo "::error::assignableUsers 里没有 Copilot 机器人：请先在仓库 Settings 启用 Copilot coding agent，并确认 COPILOT_ASSIGN_TOKEN 来自有 Copilot 许可的账号（见 docs/AI-FIX.md）。"
+            exit 1
+          fi
+          gh api graphql \
+            -H 'GraphQL-Features: issues_copilot_assignment_api_support,coding_agent_model_selection' \
+            -f query='mutation($assignable:ID!,$copilot:ID!){assignCopilotToAssignable(input:{assignableId:$assignable,copilotId:$copilot}){assignable{__typename}}}' \
+            -f assignable="$ISSUE_ID" -f copilot="$COPILOT_ID"
+          echo "已把 issue 指派给 Copilot coding agent；稍后会出现 copilot/* 分支与 Draft PR（首个 PR 需要一次人工批准）。"
