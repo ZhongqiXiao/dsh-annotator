@@ -36,6 +36,22 @@ jobs:
       - name: AI-Native maturity floor
         run: npm run assess:gate
 
+  mutation:
+    name: Scorer mutation test (评分器的评分器)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      # 15 个变异逐个打坏控制项，评分必须下降；判据退化成「读关键词」即红
+      - name: Mutation test
+        run: npm run mutate
+
   e2e:
     name: Browser e2e (best effort)
     runs-on: ubuntu-latest

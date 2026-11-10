@@ -8,8 +8,10 @@
  * 2. 永远 exit 1（坏门禁把一切拦死）→ 阴性对照：干净夹具与同提交递增必须放行（exit 0）；
  * 3. 门禁自身永远 exit 0（评分器不设阈值）→ 评分器自证：--min-score 101 必须红、0 必须绿。
  *
- * Fixtures live in a temp dir; repo files are never touched. From inside the
- * scorer set DSH_VA_CANARY_NO_SCORER=1 to skip case group 3 (recursion guard).
+ * Fixtures live in a temp dir; repo files are never touched. The scorer sets
+ * DSH_VA_ASSESS_DEPTH when it invokes us, so group 3 (scorer self-proof) still
+ * runs one level down and stops at depth 2 (recursion guard that does not
+ * blind the drill).
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -238,7 +240,9 @@ try {
 
 	// ============ 评分器自证：它自己不许是「永远 exit 0」 ============
 
-	if (!process.env.DSH_VA_CANARY_NO_SCORER) {
+	// 评分器自证：默认始终执行。只在第二层嵌套（canary→评分器→canary）时停下，
+	// 否则无限递归；第一层必须真跑，否则「评分器把地板分删了」这类变异永远发现不了。
+	if (Number(process.env.DSH_VA_ASSESS_DEPTH || '0') < 2) {
 		fail(
 			'scorer --min-score 101 fails (it can actually exit non-zero)',
 			process.execPath,

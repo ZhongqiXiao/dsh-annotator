@@ -38,11 +38,12 @@
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js && node --check lib/shared/binding-action.js && node --check lib/shared/pick-actions.js && node --check lib/shared/scratch-dir.js && node --check lib/shared/tool-schema.js && node --check lib/shared/cdp-endpoint.js && node --check lib/shared/browsers.js && node --check lib/shared/spaces.js && node --check lib/shared/ego.js && node --check lib/shared/tabs.js && node --check lib/shared/url.js && node --check lib/shared/host-rev.js && node --check lib/shared/embedded-runtime.js && node --check scripts/check-build-sync.mjs && node --check scripts/check-embedded-runtime.mjs && node --check scripts/canary-gates.mjs && node --check scripts/assess-ai-native.mjs && node --check hooks/verify-before-finish.mjs",
+		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js && node --check lib/shared/binding-action.js && node --check lib/shared/pick-actions.js && node --check lib/shared/scratch-dir.js && node --check lib/shared/tool-schema.js && node --check lib/shared/cdp-endpoint.js && node --check lib/shared/browsers.js && node --check lib/shared/spaces.js && node --check lib/shared/ego.js && node --check lib/shared/tabs.js && node --check lib/shared/url.js && node --check lib/shared/host-rev.js && node --check lib/shared/embedded-runtime.js && node --check scripts/check-build-sync.mjs && node --check scripts/check-embedded-runtime.mjs && node --check scripts/canary-gates.mjs && node --check scripts/assess-ai-native.mjs && node --check scripts/mutation-test.mjs && node --check hooks/verify-before-finish.mjs",
 		"gates": "node scripts/check-build-sync.mjs && node scripts/check-embedded-runtime.mjs",
 		"canary": "node scripts/canary-gates.mjs",
 		"assess": "node scripts/assess-ai-native.mjs",
 		"assess:gate": "node scripts/assess-ai-native.mjs --min-score 80",
+		"mutate": "node scripts/mutation-test.mjs",
 		"verify": "npm run check && npm run lint && npm run format:check && npm test && npm run gates && npm run canary"
 	},
 	"devDependencies": {
