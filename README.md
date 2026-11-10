@@ -1,6 +1,6 @@
 # dsh-annotator
 
-[![CI](https://github.com/ZhongqiXiao/dsh-visual-annotator/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhongqiXiao/dsh-visual-annotator/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-annotator)](https://www.npmjs.com/package/dsh-annotator) [![node](https://img.shields.io/badge/node-%3E%3D22-339933)](https://www.npmjs.com/package/dsh-annotator) [![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/zhongqixiao/dsh-visual-annotator)
+[![CI](https://github.com/ZhongqiXiao/dsh-annotator/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhongqiXiao/dsh-annotator/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-annotator)](https://www.npmjs.com/package/dsh-annotator) [![node](https://img.shields.io/badge/node-%3E%3D22-339933)](https://www.npmjs.com/package/dsh-annotator) [![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/zhongqixiao/dsh-annotator)
 
 一个 [DeepSeek Harness](https://www.deepseek.com) Desktop 插件：在**真实的 Chrome / Edge / ego lite 页面**上拾取、标注、评论、截图页面元素，并把元素定位 + 评论 + 截图一并交给 agent —— 让 agent 按照「你实际看到的页面」做前端可视化修改。
 
@@ -30,7 +30,7 @@
 
 **DSH 自带「插件」页**：侧栏 → **插件** → **添加插件**，输入准确包名 `dsh-annotator` → 安装。装完提供「立即启用」，需要重启时会提示。
 
-**社区插件市场**：装了 [DSH Plugin Hub](https://dsh-plugin.org)（npm 包 `dsh-plugin`）或 [dshmarket](https://dshmarket.com)（npm 包 `dshmarket`）之后，直接在市场里搜 `dsh-annotator` 安装。DSH Plugin Hub 的[插件页](https://dsh-plugin.org/plugins/zhongqixiao/dsh-visual-annotator)上也有「复制安装命令」按钮。社区市场由第三方维护，收录不代表背书。
+**社区插件市场**：装了 [DSH Plugin Hub](https://dsh-plugin.org)（npm 包 `dsh-plugin`）或 [dshmarket](https://dshmarket.com)（npm 包 `dshmarket`）之后，直接在市场里搜 `dsh-annotator` 安装。DSH Plugin Hub 的[插件页](https://dsh-plugin.org/plugins/zhongqixiao/dsh-annotator)上也有「复制安装命令」按钮。社区市场由第三方维护，收录不代表背书。
 
 ### 方式 B：命令行从 npm 安装（推荐）
 
@@ -49,7 +49,7 @@ dsh plugin --profile web add dsh-annotator
 dsh web
 ```
 
-钉版本写成 `dsh-annotator@0.5.4`，从仓库装写成 `github:zhongqixiao/dsh-visual-annotator`。
+钉版本写成 `dsh-annotator@0.5.4`，从仓库装写成 `github:zhongqixiao/dsh-annotator`。
 
 ### 方式 C：本地目录（开发模式）
 
@@ -58,7 +58,7 @@ dsh web
 ```jsonc
 {
 	"dependencies": {
-		"dsh-annotator": "link:C:/path/to/dsh-visual-annotator",
+		"dsh-annotator": "link:C:/path/to/dsh-annotator",
 	},
 	"dsh": {
 		"profile": {

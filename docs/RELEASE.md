@@ -39,7 +39,7 @@ GIT_TERMINAL_PROMPT=0 git push origin v0.5.4   # 轻量 tag 不会被 --follow-t
 | --------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `NPM_TOKEN` secret    | ✅ 已配置 | 仓库 Settings → Secrets and variables → Actions；是 npmjs 的发布令牌。缺失时 CI 只跳过 npm 发布（warning），GitHub Release 仍会产出 |
 | `GITHUB_TOKEN`        | ✅ 自带   | workflow `permissions: contents: write`，建 Release / 传资产用                                                                      |
-| 插件市场条目          | ✅ 已收录 | `awesome-dsh-plugin` 仓库 `data/plugins/ZhongqiXiao__dsh-visual-annotator.yml`；仓库已加 `dsh-plugin` topic                         |
+| 插件市场条目          | ✅ 已收录 | `awesome-dsh-plugin` 仓库 `data/plugins/ZhongqiXiao__dsh-annotator.yml`；仓库已加 `dsh-plugin` topic                                |
 | `dsh.bundle` manifest | ✅        | `package.json` + `cordis.patch.yml`，市场收录与 `dsh plugin add` 的前提                                                             |
 
 ## 插件市场为什么不用每次发版都动
