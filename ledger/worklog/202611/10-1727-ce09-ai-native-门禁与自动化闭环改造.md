@@ -1,7 +1,7 @@
 # 20261110-1727-ce09-ai-native-门禁与自动化闭环改造: AI-Native 门禁与自动化闭环改造
 
 - **Tags**: AI-Native, 门禁, 自动化, CI
-- **Status**: doing · 2026-11-10 17:46:16 · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1
+- **Status**: doing · 2026-11-10 17:50:51 · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1
 - **Created**: 2026-11-10 17:27:45 · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1
 
 <!-- Header lines are maintained by the script, fixed order: Tags → Status → Created → Sealed.
@@ -31,11 +31,22 @@
 
 ## Process
 
-<!-- Pitfalls and evidence: with revision + file:line or symbol names -->
+- run_code 生成器里模板串转义反引号两次翻车（\\` 提前终止字面量）→ 一律用 String.fromCharCode(96) 拼夹具。
+- canary 夹具正则多转义一层（生成器 \\\\d 落盘成 \\d 匹配不上真实内容）→ replaceOrThrow 以「替换未生效即抛错」兜底，杜绝假演练。
+- canary 断言关键词用过英文 payload，中文报错是「载荷」→ 断言改用 violation code（overlay-without-bump）。
+- hooks/verify-before-finish.mjs 初版残留引号 + 未导入 readFileSync（ReferenceError）→ node --check + stop_hook_active 冒烟验证后修复。
+- prettier --write 把 bug.md / PR 模板重排导致 format:check 一次中断 → 重跑后 npm run verify 全绿（98 tests + gates + canary，EXIT=0）。
+- 评分证据：scripts/canary-gates.mjs 5/5 场景真判失败（exit=1 且报错含预期 violation code）；两门禁真仓 EXIT=0。
 
 ## Conclusion
 
-<!-- What got done, what got left behind -->
+- 完成（P0）：lib/shared/host-rev.js（三契约解析与静态/历史校验纯函数）、lib/shared/embedded-runtime.js（注入脚本运行时扫描）、scripts/check-build-sync.mjs（静态 + git merge-base 历史门禁）、scripts/check-embedded-runtime.mjs、scripts/canary-gates.mjs（5 场景演练）、test/host-rev.test.mjs 与 test/embedded-runtime.test.mjs（11 测试）。
+- 完成（P1）：hooks/verify-before-finish.mjs + .claude/settings.json 注册 Stop hook，收尾前强制 verify，失败带对号入座的修复指南。
+- 完成（P2）：.github/ISSUE_TEMPLATE/bug.md（验收标准=自动验证契约，labels [bug, ai-fix]）+ config.yml（禁空白 issue）+ PULL_REQUEST_TEMPLATE.md（Resolves #N 闭环）。
+- 完成（P3）：ci.yml checkout fetch-depth: 0、单步 npm run verify、e2e job continue-on-error。
+- 配套：package.json（gates/canary/assess 脚本 + verify 串联 + check 覆盖新文件）、eslint scripts/hooks 块、.gitignore .scratch/、AGENTS.md 三契约与 AI-Native 章节、docs/ai-native-health-report.md。
+- 评分：npm run assess 自评 100/100 Tier 1 · Exemplar（评分器本会话自建，存在自评偏置；首次在真实 PR 里拦下违规才算落地验证）。
+- 遗留：改动未 git 提交（待用户过目后按 Conventional Commits 提交）；e2e 在 CI 的首次真实运行结果未知（continue-on-error 兜底）；评分权重为本仓裁剪版，可随实战调整。
 
 ## Execution Log
 
@@ -43,3 +54,4 @@
      Backfill with: progress log --id 20261110-1727-ce09-ai-native-门禁与自动化闭环改造 --note "...". -->
 - 2026-11-10 17:27:45 · new · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1 · created and claimed
 - 2026-11-10 17:46:16 · log · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1 · P0~P3 全部落地：三契约门禁+运行时门禁+canary 五场景演练+verify 串联+Stop hook+issue/PR 模板+CI 全历史与 e2e；npm run verify 全绿；自评成熟度 100/100（评分器本会话自建，存在自评偏置，首次真实拦截才算落地验证）
+- 2026-11-10 17:50:51 · log · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1 · 实现已按 Conventional Commits 落库两笔（afac74a 门禁+canary+评分器+测试+接线；eccda09 收尾钩子+issue/PR 模板+CI+AGENTS+健康报告）；推送待用户执行（远端有新提交需先 pull --rebase）；工作区遗留无关变更 assets/icon-180.png、scripts/make-icon.py 与未跟踪 .pnpm-store/、pnpm-lock.yaml 未纳入提交
