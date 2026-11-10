@@ -2,7 +2,7 @@
 
 本文件记录 dsh-visual-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-## [Unreleased]
+## [0.5.1] - 2026-11-10
 
 ### Changed
 
