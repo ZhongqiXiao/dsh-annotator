@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - main
+    # 台账自动提交只动 ledger/（改不了代码），跳过以免 Actions 列表被「记进展」刷屏；
+    # 代码或混合提交照常触发，Release workflow（tag 触发）不受影响。
+    paths-ignore:
+      - 'ledger/**'
 
 permissions:
   contents: read
