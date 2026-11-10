@@ -21,7 +21,7 @@ export default [
 	{
 		// Host side: runs in the DSH plugin host (Node 22). overlay.js is ESM
 		// host code; the injected page script lives in a template string in it.
-		files: ['lib/**/*.js', 'test/**/*.mjs'],
+		files: ['lib/**/*.js', 'test/**/*.mjs', 'scripts/*.mjs', 'hooks/*.mjs'],
 		languageOptions: {
 			ecmaVersion: 2024,
 			sourceType: 'module',

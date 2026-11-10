@@ -7,6 +7,9 @@ shots/
 .dsh-visual-annotator/
 .memsearch/
 
+# 本地演练与临时探针（canary 夹具等），与 clb-new 的 .scratch 约定一致
+.scratch/
+
 # 部门分享材料（本地产物，不入仓）
 share/
 .archify/
