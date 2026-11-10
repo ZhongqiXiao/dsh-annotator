@@ -189,4 +189,4 @@ MIT
   用例用无头 + 临时 profile，不需要任何额外开关：宿主自带的沙箱会拦住 Chrome 自己的 sandbox（renderer 立刻 `SIGTRAP`、CDP socket 在握手后关闭，日志里的 `chrome connection is closed`），插件识别到「自己起的实例刚死」后会带 `--no-sandbox` 自动重试一次，快照里的 `sandboxFallback` 会变成 `true`。这条回退只作用于**自己 spawn** 的进程，接回的外部窗口不受影响；不想要它可设 `DSH_VISUAL_ANNOTATOR_SANDBOX_FALLBACK=0`。
 - 代码规范：ESLint（host/browser 双环境区分）+ Prettier + `.editorconfig`。
 - 面向 AI 代理的协作文档：[`AGENTS.md`](AGENTS.md)（工作约定与硬性约束）、[`docs/API.md`](docs/API.md)（插件 API 契约）。
-- 发布：`v*` tag 触发，CI 校验 tag↔package.json 版本一致并跑通门径后自动出 GitHub Release；详见 [`CHANGELOG.md`](CHANGELOG.md)。
+- 发布：`v*` tag 触发，CI 校验 tag↔package.json 版本一致并跑通门径后自动完成 GitHub Release + npm 发布 + 插件市场 tarball 更新；发版流程详见 [`docs/RELEASE.md`](docs/RELEASE.md)，变更记录见 [`CHANGELOG.md`](CHANGELOG.md)。

@@ -53,3 +53,4 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 
 - Conventional Commits（`feat:` / `fix:` / `chore:` / `docs:`）。
 - 发版：改 `package.json` version + 在 `CHANGELOG.md` 记录 → 提交 → 打 `v*` tag 推送，CI 自动出 GitHub Release（tag 与 package.json 版本不一致会 guard 失败）。
+- **发版全流程看 [docs/RELEASE.md](docs/RELEASE.md)**（agent 发版照它执行）：推 tag 后 CI 自动完成 GitHub Release + npm publish + 插件市场 tarball 更新（一条龙命令、前提、常见故障都在里面，插件市场已收录、发版无需再动它）。
