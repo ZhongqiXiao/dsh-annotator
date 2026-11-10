@@ -42,6 +42,7 @@
 		"gates": "node scripts/check-build-sync.mjs && node scripts/check-embedded-runtime.mjs",
 		"canary": "node scripts/canary-gates.mjs",
 		"assess": "node scripts/assess-ai-native.mjs",
+		"assess:gate": "node scripts/assess-ai-native.mjs --min-score 80",
 		"verify": "npm run check && npm run lint && npm run format:check && npm test && npm run gates && npm run canary"
 	},
 	"devDependencies": {

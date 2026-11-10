@@ -32,8 +32,9 @@ hooks/        verify-before-finish.mjs 收尾钩子（未过 verify 不得收工
 ```bash
 npm run verify   # check + lint + format:check + test + gates + canary——提交前必跑，全绿才算过门径
 npm run gates    # 只跑两道物理门禁（build-sync 三契约 / embedded-runtime 运行时约束）
-npm run canary   # canary 演练：向临时目录注入合成违规，验证门禁真的会拦（5 场景）
+npm run canary   # canary 演练（双向对照 12 场景）：阳性=违规必须拦、阴性=干净必须放行、CI 浅克隆必须红、评分器自证
 npm run assess   # AI-Native 成熟度评分（--write-docs 写入 docs/ai-native-health-report.md）
+npm run assess:gate # 评分地板分（--min-score 80）：低于地板分 exit 1，CI 强制——评分器不许自己永远 exit 0
 npm run format   # prettier 全量格式化
 npm run lint:fix # eslint 自动修复
 npm test         # 只跑单元测试
@@ -49,12 +50,12 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 ## AI-Native 门禁与自动化闭环
 
 - **物理拦截优先于文档约定**：「写在这但没人查」的约束必然翻车。本仓把最容易翻车的两类契约（三版本标记、注入脚本运行时）做成了物理门禁（`scripts/check-build-sync.mjs`、`scripts/check-embedded-runtime.mjs`），CI 与收尾钩子都会跑。
-- **canary 自证**：`npm run canary` 注入 5 类合成违规（版本 skew、process 泄漏、载荷 require、漏递增的 client / 载荷改动），门禁必须真判失败——从未失败过的门禁得 0 分。
+- **canary 双向自证**：`npm run canary` 共 12 场景，假门禁的三种死法各配探针——永远 exit 0 的门禁（阳性 5：版本 skew、process 泄漏、载荷 require、漏递增的 client/载荷，注入违规必须真判失败）；永远 exit 1 的门禁（阴性 4：干净夹具 ×2、同提交递增、浅克隆本地放行，必须全部放行）；CI 假绿路径（浅克隆 + CI 环境必须直接红，堵死「警告放行」）；永远 exit 0 的评分器（自证 2：`--min-score 101` 必须红、0 必须绿）。任何一类失效，canary 都会红。
 - **收尾钩子**：agent 会话收尾前自动执行 `npm run verify`（`hooks/verify-before-finish.mjs`，注册于 `.claude/settings.json` 的 Stop hook），未全绿会被拦下并给出对号入座的修复指南。
 - **issue → 修复 → 验证闭环**：bug 模板（`.github/ISSUE_TEMPLATE/bug.md`）要求验收标准写成可执行断言（这是自动验证契约）。`ai-fix` 标签 = agent-ready 契约 + 派单触发，两条领取路径：
   - **自动派单**：打上 `ai-fix` 标签后，`.github/workflows/ai-fix-dispatch.yml` 把 issue 指派给 GitHub Copilot coding agent，由它开分支、开 Draft PR；首个 PR 需人工批准一次，之后 CI verify 自动验证。一次性配置见 [docs/AI-FIX.md](docs/AI-FIX.md)。
   - **本地认领**：编码 agent 会话执行 `gh issue list --label ai-fix` 认领，按验收标准修复，PR 用 `Resolves #N` 绑定 issue，合并即闭环。
-- **成熟度评分**：`npm run assess` 按 6 维（治理 15 / 物理拦截 25 / 架构边界 15 / 契约同步 15 / 工作流自动化 20 / 验证测试 10）实跑取证评分，≥90 Exemplar、≥75 AI-Ready；报告落 `docs/ai-native-health-report.md`。
+- **成熟度评分**：`npm run assess` 按 6 维（治理 15 / 物理拦截 25 / 架构边界 15 / 契约同步 15 / 工作流自动化 20 / 验证测试 10）实跑取证评分，≥90 Exemplar、≥75 AI-Ready；报告落 `docs/ai-native-health-report.md`。CI 在 verify 后另跑 `npm run assess:gate`（--min-score 80），低于地板分直接红。
 
 ## 任务台账
 

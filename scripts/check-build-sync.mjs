@@ -9,9 +9,10 @@
  * zone must not be newer than the last commit that introduced the current
  * `var REV`.
  *
- * Shallow clones (CI default) cannot verify history: this gate passes with a
- * warning, or fails with --strict. Run the CI checkout with fetch-depth: 0
- * to really enforce it.
+ * Shallow clones cannot verify history. Outside CI the gate passes with a
+ * warning; inside CI (CI / GITHUB_ACTIONS set) or with --strict it fails:
+ * a silent "history skipped" in CI would be a fake-green path — if someone
+ * drops fetch-depth: 0 from the checkout, the gate must turn red instead.
  *
  * Flags: --repo <dir> (default this repo; canary drills point it at a temp
  * git repo), --lib <dir> (default <repo>/lib), --strict, --skip-history.
@@ -106,14 +107,19 @@ if (!args.skipHistory) {
 		notes.push('不在 git 仓库里，跳过历史校验（保留静态校验）。');
 	}
 	if (shallow) {
-		if (args.strict) {
+		const inCi = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
+		if (inCi || args.strict) {
 			problems.push({
 				code: 'shallow-clone',
-				message: '浅克隆无法校验递增历史（--strict）；CI 请把 checkout 的 fetch-depth 设为 0。',
-				guide: '',
+				message: inCi
+					? 'CI 浅克隆无法校验递增历史——静默跳过会造出「永远放行」的假绿门禁，所以直接判红；请把 checkout 的 fetch-depth 设为 0。'
+					: '浅克隆无法校验递增历史（--strict）。',
+				guide: inCi
+					? '💡 修复指南：在 ci.yml 的 actions/checkout 加 with: fetch-depth: 0（本仓 verify job 已如此配置）。'
+					: '',
 			});
 		} else {
-			notes.push('浅克隆：跳过历史校验（--strict 可改为报错；CI 用 fetch-depth: 0 才能真校验）。');
+			notes.push('浅克隆：跳过历史校验（本地可用；CI 环境会直接判红）。');
 		}
 	} else {
 		const hostRev = parseHostRev(hostSource);

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
- * AI-Native maturity scorer (right-sized port of clb-new's assess-maturity).
- * Six dimensions, 100 points. Evidence is EXECUTED where possible: the two
- * physical gates and the canary drill are run for real, so a dead gate can
- * never score. Usage: node scripts/assess-ai-native.mjs [--write-docs].
+ * AI-Native maturity scorer (right-sized port of clb-new assess-maturity).
+ * Six dimensions, 100 points. Evidence is EXECUTED where possible: the
+ * gates, the canary drill and the finish hook are run for real, so a dead
+ * gate can never score. And per clb-new hardest lesson, the scorer itself
+ * must not be a fake gate: without a floor it would always exit 0, so
+ * --min-score <n> exits 1 below the threshold (CI runs npm run assess:gate).
+ * Usage: node scripts/assess-ai-native.mjs [--write-docs] [--min-score <n>].
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -18,8 +21,11 @@ const read = (rel) => {
 		return null;
 	}
 };
-const runNode = (rel, args = []) => {
-	const r = spawnSync(process.execPath, [path.join(repoRoot, rel), ...args], { encoding: 'utf8' });
+const runNode = (rel, args = [], env = {}) => {
+	const r = spawnSync(process.execPath, [path.join(repoRoot, rel), ...args], {
+		encoding: 'utf8',
+		env: { ...process.env, ...env },
+	});
 	return { status: r.status, out: (r.stdout || '') + (r.stderr || '') };
 };
 
@@ -57,16 +63,17 @@ add(
 
 // ---------- D2 物理拦截 (25) ----------
 const d2 = dim('物理拦截', 25);
+const syncSrc = read('scripts/check-build-sync.mjs') || '';
 add(
 	d2,
-	4,
+	1,
 	'build-sync 门禁存在',
 	existsSync(path.join(repoRoot, 'scripts/check-build-sync.mjs')),
 	'写 scripts/check-build-sync.mjs',
 );
 add(
 	d2,
-	4,
+	1,
 	'embedded-runtime 门禁存在',
 	existsSync(path.join(repoRoot, 'scripts/check-embedded-runtime.mjs')),
 	'写 scripts/check-embedded-runtime.mjs',
@@ -75,26 +82,41 @@ const pkg = JSON.parse(read('package.json') || '{}');
 const verifyChain = (pkg.scripts || {}).verify || '';
 add(
 	d2,
-	5,
+	4,
 	'npm run verify 串联门禁与 canary',
 	/gates/.test(verifyChain) && /canary/.test(verifyChain),
 	'package.json 的 verify 链加入 npm run gates 与 npm run canary',
 );
-const canaryRun = runNode('scripts/canary-gates.mjs');
+// 阳性+阴性都在同一次 canary 实跑里取证；NO_SCORER 防评分器自证递归
+const canaryRun = runNode('scripts/canary-gates.mjs', [], { DSH_VA_CANARY_NO_SCORER: '1' });
 add(
 	d2,
-	6,
-	'canary 演练实跑通过（门禁被证明能真判失败）',
-	canaryRun.status === 0,
-	'运行 node scripts/canary-gates.mjs 排查哪道门禁失效',
+	5,
+	'canary 阳性实跑通过（注入违规必须真被拦）',
+	canaryRun.status === 0 && /阳性/.test(canaryRun.out),
+	'运行 node scripts/canary-gates.mjs 看哪个阳性场景失效',
+);
+add(
+	d2,
+	4,
+	'canary 阴性对照实跑通过（干净夹具必须放行，防「永远 exit 1」）',
+	canaryRun.status === 0 && /阴性/.test(canaryRun.out),
+	'canary-gates.mjs 补阴性对照场景（干净夹具与同提交递增）',
 );
 const ci = read('.github/workflows/ci.yml');
 add(
 	d2,
 	6,
-	'CI 调用 npm run verify（或各道门禁）',
-	!!ci && /(npm run verify|check-build-sync|check-embedded-runtime)/.test(ci),
-	'ci.yml 里跑 npm run verify，并设 fetch-depth: 0',
+	'CI 跑 verify 且 fetch-depth: 0（历史规则在 CI 真生效）',
+	!!ci && /npm run verify/.test(ci) && /fetch-depth: 0/.test(ci),
+	'ci.yml verify job 补 npm run verify 与 fetch-depth: 0',
+);
+add(
+	d2,
+	4,
+	'浅克隆在 CI 直接判红（堵死「警告放行」假绿路径）',
+	/GITHUB_ACTIONS|process\.env\.CI/.test(syncSrc),
+	'check-build-sync.mjs 浅克隆分支加 CI 环境严格判定',
 );
 
 // ---------- D3 架构边界 (15) ----------
@@ -120,7 +142,6 @@ add(
 
 // ---------- D4 契约同步 (15) ----------
 const d4 = dim('契约同步', 15);
-const syncSrc = read('scripts/check-build-sync.mjs') || '';
 add(
 	d4,
 	5,
@@ -130,19 +151,21 @@ add(
 );
 add(d4, 5, 'git 历史递增规则启用', /merge-base/.test(syncSrc), '门禁用 merge-base 校验契约递增历史');
 const canarySrc = read('scripts/canary-gates.mjs') || '';
+const failCases = (canarySrc.match(/fail\(/g) || []).length;
+const passCases = (canarySrc.match(/pass\(/g) || []).length;
 add(
 	d4,
 	5,
-	'canary 覆盖历史规则（不只静态）',
-	(canarySrc.match(/run\(/g) || []).length >= 5 && /--repo/.test(canarySrc),
-	'canary-gates.mjs 增加 git 历史类注入场景',
+	'canary 双向覆盖（阳性≥5 且阴性≥3）',
+	failCases >= 5 && passCases >= 3,
+	'canary-gates.mjs 补阴性对照：坏门禁「永远 exit 1」也必须拿 0 分',
 );
 
 // ---------- D5 工作流自动化 (20) ----------
 const d5 = dim('工作流自动化', 20);
 add(
 	d5,
-	4,
+	3,
 	'verify-before-finish 收尾钩子存在',
 	existsSync(path.join(repoRoot, 'hooks/verify-before-finish.mjs')),
 	'写 hooks/verify-before-finish.mjs（收尾前强制 verify）',
@@ -150,10 +173,23 @@ add(
 const settings = read('.claude/settings.json');
 add(
 	d5,
-	4,
+	3,
 	'钩子已注册（Stop hook）',
 	!!settings && /verify-before-finish/.test(settings),
 	'在 .claude/settings.json 注册 Stop hook',
+);
+// guard 模式真跑：stop_hook_active=true 必须直接放行（防死循环契约）；
+// 连这条都过不了的钩子说明 stdin 契约已坏
+const hookGuard = spawnSync(process.execPath, [path.join(repoRoot, 'hooks/verify-before-finish.mjs')], {
+	encoding: 'utf8',
+	input: JSON.stringify({ stop_hook_active: true }),
+});
+add(
+	d5,
+	4,
+	'收尾钩子 guard 模式实跑通过（stop_hook_active 直接放行）',
+	hookGuard.status === 0,
+	'echo {\"stop_hook_active\":true} | node hooks/verify-before-finish.mjs 验证',
 );
 const bugTpl = read('.github/ISSUE_TEMPLATE/bug.md');
 add(
@@ -165,13 +201,13 @@ add(
 );
 add(
 	d5,
-	4,
+	3,
 	'bug 模板带 ai-fix 触发标签',
 	!!bugTpl && /ai-fix/.test(bugTpl),
-	'front-matter labels 加 ai-fix，供编码 agent 认领',
+	'issue 模板 front-matter labels 加 ai-fix，供编码 agent 认领',
 );
 const prTpl = read('.github/PULL_REQUEST_TEMPLATE.md');
-add(d5, 4, 'PR 模板绑定 Resolves #issue', !!prTpl && /Resolves/.test(prTpl), 'PR 模板加 Resolves #N，形成闭环引用');
+add(d5, 3, 'PR 模板绑定 Resolves #issue', !!prTpl && /Resolves/.test(prTpl), 'PR 模板加 Resolves #N，形成闭环引用');
 
 // ---------- D6 验证与测试 (10) ----------
 const d6 = dim('验证与测试', 10);
@@ -208,6 +244,9 @@ const text = [
 ].join('\n');
 
 console.log(text);
+const floorIdx = process.argv.indexOf('--min-score');
+const minScore = floorIdx >= 0 ? Number(process.argv[floorIdx + 1]) : null;
+if (minScore !== null) console.log('地板分：--min-score ' + minScore + ' → ' + (total >= minScore ? '达标' : '未达标'));
 if (process.argv.includes('--write-docs')) {
 	mkdirSync(path.join(repoRoot, 'docs'), { recursive: true });
 	const stamp = new Date().toISOString().slice(0, 10);
@@ -216,5 +255,11 @@ if (process.argv.includes('--write-docs')) {
 		'# AI-Native 健康报告\n\n> 由 scripts/assess-ai-native.mjs 生成于 ' + stamp + '\n\n```\n' + text + '\n```\n',
 	);
 	console.log('\n已写入 docs/ai-native-health-report.md');
+}
+if (minScore !== null && Number.isFinite(minScore) && total < minScore) {
+	console.error(
+		'✗ 未达成熟度地板分：' + total + '/100 < --min-score ' + minScore + '——评分器不许自己当「永远 exit 0」的假门禁',
+	);
+	process.exit(1);
 }
 process.exit(0);
