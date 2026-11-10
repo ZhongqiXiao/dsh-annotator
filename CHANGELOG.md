@@ -2,6 +2,13 @@
 
 本文件记录 dsh-visual-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.5.2] - 2026-11-10
+
+### Fixed
+
+- **点「插入」或 Ctrl / ⌘ + Enter 会插入两三次一模一样的标注**（Windows 上更常见）：GUI 里同一个面板可能同时挂着多份实例（热重载、同一 slot 被注册两次、后台常驻的旧模块），每份都在 `window` 上注册同一套快捷键监听，一次按键被 N 份各插一遍。现在加了挂在 `window` 上的插入闸门 `__DSH_VP_INSERT_GATE__`（各模块副本共享）：快捷键按**事件对象身份**认领，同一次按键不管几个监听器只放行一次；页面 HUD 回传的 `pendingConsume` 按 token 认领，失败才退回以免真的丢掉一次插入；「插入」「全部插入」两个按钮走单飞锁，插入期间重复点击忽略。host 侧 `_recordPick` 再兜一层：1.5 秒内 url / selector / seq / 矩形 / 备注完全相同的 pick 直接丢弃，重复的 binding 投递不会在列表里堆三条。面板构建升到 v28。
+- **点「插入」瞬间卡片闪一下**：`commit()` 原来先清空 textarea 的高度再关卡片——多行备注的卡片会先缩回单行、下一帧才消失，看起来就是抖一下。现在改为先 `closeCard()`（`display:none`）再清内容与高度，卡片一次性消失。注入层 REV 升到 12。
+
 ## [0.5.1] - 2026-11-10
 
 ### Changed
