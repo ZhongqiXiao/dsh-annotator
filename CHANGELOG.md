@@ -2,6 +2,12 @@
 
 本文件记录 dsh-visual-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [Unreleased]
+
+### Changed
+
+- **安装说明补齐 Desktop / Web 与两条安装途径**：README 的安装一节重写为三条路径——插件市场（DSH 自带「插件」页输入包名，或 DSH Plugin Hub / dshmarket 里搜）、命令行从 npm 安装（`dsh plugin --profile desktop|web add dsh-visual-annotator`，附 Web 端 `dsh web`）、本地目录开发模式（`link:` + `dsh.profile.bundles`）；并写清生效条件（重启 Desktop / 重跑 `dsh web`）与卸载入口。
+
 ## [0.5.0] - 2026-11-10
 
 ### Added

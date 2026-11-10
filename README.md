@@ -21,7 +21,7 @@
 ## 环境要求
 
 - Node.js >= 22
-- DeepSeek Harness Desktop（web 客户端平台）
+- DeepSeek Harness Desktop，或用 `dsh web` 起的 Web 客户端（两者都是 web 客户端平台）
 - 本机装有 Chrome、Edge 或 [ego lite](https://ego.app) 之一（面板三个都列出来，没装的标「（未安装）」并禁用）
 
 ## 环境变量
@@ -91,17 +91,38 @@ ego lite 是「浏览器 + agent 空间」一体的，插件针对它做了三�
 
 不设 `DSH_VISUAL_ANNOTATOR_WINDOW` 时窗口默认最大化：新 profile 的默认窗口由 Chrome 自己挑，在 4K / 高缩放桌面上会明显偏小，看起来就像整个浏览器被缩放了。环境变量由 host 进程读取，改完需重启 DSH Desktop。
 
-## 安装（DeepSeek Harness Desktop）
+## 安装
 
-### 方式 A：从 npm 安装（推荐）
+同一个包，桌面端与 Web 端都能装，区别只在装进哪个 profile：Desktop 用 `--profile desktop`，Web 用 `--profile web`（`dsh web` 等价于 `dsh --profile web`）。
+
+### 方式 A：插件市场（图形界面）
+
+**DSH 自带「插件」页**：侧栏 → **插件** → **添加插件**，输入准确包名 `dsh-visual-annotator` → 安装。Host 会先读出这个名字指向哪个包（注册表包走 `pnpm view`）再装，装完提供「立即启用」，需要重启时会提示。
+
+**社区插件市场**：装了 [DSH Plugin Hub](https://dsh-plugin.org)（npm 包 `dsh-plugin`）或 [dshmarket](https://dshmarket.com)（npm 包 `dshmarket`）之后，直接在市场里搜 `dsh-visual-annotator` 安装。DSH Plugin Hub 的[插件页](https://dsh-plugin.org/plugins/zhongqixiao/dsh-visual-annotator)上也有「复制安装命令」按钮。社区市场由第三方维护，收录不代表背书。
+
+这两个入口做的事和下面的命令行一样：往 profile 的 `package.json` 写依赖、把包加进 `dsh.profile.bundles` 启用列表。
+
+### 方式 B：命令行从 npm 安装（推荐）
+
+包发布在 [npm](https://www.npmjs.com/package/dsh-visual-annotator)，当前版本 `0.5.0`，要求 Node.js >= 22。
+
+Desktop：
 
 ```bash
 dsh plugin --profile desktop add dsh-visual-annotator
 ```
 
-该命令会把包加入 `~/.dsh/profiles/desktop/package.json` 的 `dependencies`，并加入 `dsh.profile.bundles` 启用列表。
+Web：
 
-### 方式 B：本地目录（开发模式）
+```bash
+dsh plugin --profile web add dsh-visual-annotator
+dsh web
+```
+
+`dsh plugin` 把你给的参数转发给 profile 目录里的 pnpm，所以 pnpm 的写法都能用：钉版本写成 `dsh-visual-annotator@0.5.0`，从仓库装写成 `github:zhongqixiao/dsh-visual-annotator`。该命令会把包加入 `~/.dsh/profiles/<profile>/package.json` 的 `dependencies`，并加入 `dsh.profile.bundles` 启用列表。
+
+### 方式 C：本地目录（开发模式）
 
 把本仓库克隆到任意位置，然后在 `~/.dsh/profiles/desktop/package.json` 中：
 
@@ -118,9 +139,13 @@ dsh plugin --profile desktop add dsh-visual-annotator
 }
 ```
 
+改的是哪个 profile 就写哪个目录：桌面端 `~/.dsh/profiles/desktop/`，Web 端 `~/.dsh/profiles/web/`。
+
 ### 生效
 
-重启 DSH Desktop。GUI 右侧边栏出现「元素标注」面板即安装成功；面板通过版本号自动热刷新（HOST_REV），后续升级只需更新包再重启。
+重启 DSH：Desktop 退出后重新打开；Web 端重新跑一次 `dsh web`（`dsh plugin` 改的是启动时读的 profile，不会热加载已启动的进程）。GUI 右侧边栏出现「元素标注」面板即安装成功；面板通过版本号自动热刷新（HOST_REV），后续升级只需更新包再重启。
+
+卸载与更新走同一套入口：侧栏「插件」页里可停用、更新、卸载，命令行则用 `dsh plugin --profile desktop remove dsh-visual-annotator`。
 
 ## 使用流程
 
