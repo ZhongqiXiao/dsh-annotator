@@ -68,10 +68,21 @@ test('overlay follows the target on scroll and resize', () => {
 });
 
 // 卡片可能贴在元素上方或下方，尖角与朝向类必须一起决定，否则尖角会指错方向。
+// 早先下方放不下就取 top = max(8, rect.y - h - 8)：目标贴着视口顶部、或者目标本身
+// 是一大块时 top 落到 8，卡片整张跳到视口左上角并盖住刚点的元素——用户报的
+// 「标注框跳到左上角、形状被遮挡」。现在先夹进视口再摆，朝向按实际几何决定，
+// 与目标在水平方向都不重叠时干脆不画尖角。
 test('overlay picks the card side and aims the notch at the element', () => {
-	assert.ok(OVERLAY_SCRIPT.includes("card.classList.toggle('below', below)"));
-	assert.ok(OVERLAY_SCRIPT.includes("card.classList.toggle('above', !below)"));
+	assert.ok(OVERLAY_SCRIPT.includes('var clampTop = function (y)'));
+	assert.ok(
+		OVERLAY_SCRIPT.includes('var top = clampTop(below ? rect.y + rect.height + gap : rect.y - h - gap);'),
+		'上下两个落点都要夹进视口，别让 top 落到 8 这种角落值',
+	);
+	assert.ok(!OVERLAY_SCRIPT.includes('Math.max(8, rect.y - h - 8)'), '不许再回落到左上角的旧 clamp');
 	assert.ok(OVERLAY_SCRIPT.includes("card.style.setProperty('--vp-notch'"));
+	assert.ok(OVERLAY_SCRIPT.includes('var intersectsX = left + w > rect.x && left < rect.x + rect.width;'));
+	assert.ok(OVERLAY_SCRIPT.includes("card.classList.toggle('below', intersectsX && top >= rect.y + rect.height - 1)"));
+	assert.ok(OVERLAY_SCRIPT.includes("card.classList.toggle('above', intersectsX && top + h <= rect.y + 1)"));
 });
 
 // 页面内 Alt+A 直接开关标注模式；macOS 的 Option+A 会把 key 组合成 å，判定必须走

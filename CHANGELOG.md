@@ -8,6 +8,13 @@
 
 - **安装说明补齐 Desktop / Web 与两条安装途径**：README 的安装一节重写为三条路径——插件市场（DSH 自带「插件」页输入包名，或 DSH Plugin Hub / dshmarket 里搜）、命令行从 npm 安装（`dsh plugin --profile desktop|web add dsh-visual-annotator`，附 Web 端 `dsh web`）、本地目录开发模式（`link:` + `dsh.profile.bundles`）；并写清生效条件（重启 Desktop / 重跑 `dsh web`）与卸载入口。
 
+### Fixed
+
+- **标注框跑到左上角、盖住刚点的元素（Windows Edge 尤甚）**：注入层的 host、高亮框与标注卡都是 `position:fixed`，一旦页面里有祖先建了包含块（`transform` / `filter` / `will-change` / `contain`，React 壳与各种动画库很常见），fixed 子元素就相对那一层而不是视口定位，host 自己的矩形随滚动偏成 `-scrollY`，于是把 `getBoundingClientRect()` 的视口坐标直接写进 `left/top` 的框整体错位。现在新增 `hostOrigin()` 与 `place()`，高亮框、标签、卡片所有坐标都先减去 host 原点（实测：祖先带 `translateZ(0)`、scrollY=200 时 host 矩形是 `{x:0,y:-200}`，修复前框偏 -200，修复后精确落在目标上）。注入层 REV 升到 11。
+- **卡片在目标贴顶或本身很高时跳到视口左上角**：`positionCard` 重写——先把卡片夹进视口再摆，上下都放不下时按鼠标点的反方向选边，尖角朝向由实际几何决定（与目标水平方向都不重叠就干脆不画尖角），尺寸改用 `offsetWidth/offsetHeight` 避开入场动画 `scale(.985)` 量小；卡片打开时不再把页面滚走（恢复焦点带 `preventScroll`）。
+- **点「添加标注」或 Ctrl / ⌘ + Enter 插入时整页抖一下**：截图不再用 `captureBeyondViewport` ——它会把渲染视口临时撑成整页再还原，页面收到一次 `resize` 并整页重排。现在先用 `Page.getLayoutMetrics` 把截图区域夹进当前可见区，只有元素完全在视口外时才退回整页截图（实测六个场景——普通/带 transform、小目标/角落元素/超高目标——提交后 `resize` 计数与滚动位移都是 0）。
+- **浏览器选择器一改就自己开浏览器**：下拉框的 `onChange` 现在只记住选择、不发 `/launch`；已连接且选中的不是当前浏览器时，右侧按钮变成「切换到 Edge」，点下去才会关掉旧窗口起新实例（标注记录保留）。
+
 ## [0.5.0] - 2026-11-10
 
 ### Added
