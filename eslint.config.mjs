@@ -12,6 +12,11 @@ export default [
 			sourceType: 'script',
 			globals: { ...globals.browser },
 		},
+		rules: {
+			// 面板脚本没有打包、没有 TS：删掉一个 useState 却漏掉引用，
+			// 只会在用户点按钮那一刻抛 ReferenceError（「点了没反应」正是这么来的）。
+			'no-undef': 'error',
+		},
 	},
 	{
 		// Host side: runs in the DSH plugin host (Node 22). overlay.js is ESM

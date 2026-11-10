@@ -12,7 +12,7 @@ lib/
   overlay.js  注入页面的拾取层脚本（shadow DOM）+ 绑定名常量
   client.js   Web 面板脚本（跑在 DSH GUI 浏览器环境，sourceType: script）
   shared/     host 与未来复用方的纯函数模块（无副作用）
-test/         node --test 单元测试（只测纯函数，不启动浏览器）
+test/         单元测试（纯函数，不启动浏览器）+ e2e-browsers.test.mjs（真浏览器，默认 skip）
 .github/workflows/  ci.yml（PR/push 门径）、release.yml（tag v* 发布）
 ```
 
@@ -32,6 +32,7 @@ npm run verify   # check（node --check 全部 lib）+ lint（eslint）+ test（
 npm run format   # prettier 全量格式化
 npm run lint:fix # eslint 自动修复
 npm test         # 只跑单元测试
+npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪个浏览器就跑哪个
 ```
 
 ## 代码规范

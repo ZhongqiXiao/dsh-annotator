@@ -3,4 +3,6 @@ node_modules/
 .DS_Store
 profile-*/
 shots/
+# 旧版本把临时文件写在 <cwd>/.dsh-visual-annotator/；现改到系统临时目录，保留忽略规则防止升级残留被误提交
+.dsh-visual-annotator/
 .memsearch/

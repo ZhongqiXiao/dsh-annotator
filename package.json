@@ -33,11 +33,12 @@
 	},
 	"scripts": {
 		"test": "node --test",
+		"test:e2e": "DSH_VISUAL_ANNOTATOR_E2E=1 DSH_VISUAL_ANNOTATOR_HEADLESS=1 DSH_VISUAL_ANNOTATOR_ADOPT_RUNNING=0 node --test --test-force-exit test/e2e-browsers.test.mjs",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js && node --check lib/shared/binding-action.js && node --check lib/shared/pick-actions.js",
+		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js && node --check lib/shared/binding-action.js && node --check lib/shared/pick-actions.js && node --check lib/shared/scratch-dir.js && node --check lib/shared/tool-schema.js && node --check lib/shared/cdp-endpoint.js && node --check lib/shared/browsers.js && node --check lib/shared/spaces.js && node --check lib/shared/ego.js && node --check lib/shared/tabs.js && node --check lib/shared/url.js",
 		"verify": "npm run check && npm run lint && npm run format:check && npm test"
 	},
 	"devDependencies": {

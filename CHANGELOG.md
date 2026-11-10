@@ -4,6 +4,51 @@
 
 ## [Unreleased]
 
+### Added
+
+- **一个 profile，跨多次调试复用**：每个（项目 × 浏览器）只建一份 profile，首次 `/launch` spawn 浏览器后，后续 `/launch` 读 profile 目录里的 `DevToolsActivePort` 接回同一个实例，不重开进程、不重建 profile、不丢登录态；新地址在同一窗口新开标签页。`/close` 缺省只断开 socket（`/state.windowKept` 反映窗口保留），`/close { terminate: true }` 才 `Browser.close`；面板对应拆成「断开连接（保留浏览器）」与「关闭浏览器」两项，并新增「已接回同一个浏览器实例」提示（`/state.resumed`）。
+- **显式连接外部浏览器**：仅在设置 `DSH_VISUAL_ANNOTATOR_CDP_URL` 时连接该端点上的浏览器，默认不探测 9222 等常见端口——避免接管用户日常 Chrome。归一化与解析下沉为 `lib/shared/cdp-endpoint.js` 纯函数并补单测。
+
+- **支持 ego lite 与 Edge 启动**：浏览器清单从「写死 chrome/edge」改为 `lib/shared/browsers.js` 注册表（`chrome` / `edge` / `ego`），`/launch` 不点名时用第一个装了的浏览器，找不到时按注册表给出对应的 `DSH_VISUAL_ANNOTATOR_*` 提示；面板新增浏览器选择器（只列装了的、记住上次选择），host 通过 `/state` 的 `browserOrder` / `browserLabels` / `browserDefault` 下发注册表，两半不会各写一份 id。
+
+- **真浏览器的端到端用例**：新增 `test/e2e-browsers.test.mjs`（默认 skip，`npm run test:e2e` 才跑），对每个已安装的浏览器各跑一遍真实使用顺序——启动 → 拾取层真注入 → 同址不重复开标签 → 新址开新标签 → 断开（保留窗口）后 `/launch` 接回同一实例且页面内标记仍在 → 关闭浏览器；再跑「调试空间与默认空间 cookie 互不可见、新空间里拾取层同样注入、关闭空间回默认空间」；装了 ≥2 个浏览器再跑「换浏览器：旧进程退出、新进程起来」。本机实测 Chrome 156 + ego lite 0.6.2.9 共 6 例全绿（Edge 未安装则自动跳过）。此前 `test/` 只有纯函数单测，启动/复用/切换/空间这些只有真浏览器能证明的行为没有任何看护。
+- **`DSH_VISUAL_ANNOTATOR_BROWSER_ARGS`**：给 spawn 的浏览器追加命令行开关（只接受 `--flag` 形式，裸词会被 Chromium 当成要打开的地址故丢弃），解析下沉为 `parseExtraArgs` 纯函数并补单测。定位是逃生口：常见的沙箱崩溃已由下面的自动回退处理，不必自己传 `--no-sandbox`。
+- **ego lite 三件事：复用已运行实例 / 独立 agent 空间 / 关掉新手引导**：① 用户自己开着的 ego lite 也会在 `127.0.0.1` 上监听标准 CDP 端口（随机分配、无端口文件），插件用 `pgrep -fl` 找主进程、`lsof -nP -F -iTCP -sTCP:LISTEN` 整表取端口（宿主沙箱里 `ps` 与 `lsof -p` 会被拒），像外部浏览器一样接管，登录态原样保留，`/state.reused` / `resumed` 为 true 且不持有进程；`DSH_VISUAL_ANNOTATOR_ADOPT_RUNNING=0` 可关掉。② 接管或新起之后建/复用一个名为 `agent 空间` 的 BrowserContext 并切过去，插件的标签页与 cookie 同用户当前那一屏互不打扰（重名自动编号）。③ 全新 profile 会开 `chrome://onboarding/` 窗口挡住用户，启动后直接 `Target.closeTarget` 关掉它。识别与解析下沉为 `lib/shared/ego.js` 纯函数并补单测（`test/ego.test.mjs`）。
+- **选择器列出未安装的浏览器**：面板此前只列装了的浏览器，这台机器没装 Edge 时选择器里根本没有 Edge，看着像「不支持 Edge」。现在三个浏览器都列出来，未安装的标「（未安装）」并禁用（`browserChoices` 纯函数），macOS 候选路径补 `~/Applications/Microsoft Edge.app`。
+- **调试空间（独立 cookie 的 BrowserContext）**：新增 `/space` 路由与面板「空间」一行，可在同一窗口里新建/切换/关闭调试空间。空间就是独立的 Chromium BrowserContext（与 ego lite 的 task space 同一原语），cookie 与 localStorage 隔离、标签页互不串；命名与标签归属下沉为 `lib/shared/spaces.js` 纯函数并补单测。实测（ego lite 0.6.2.9）：默认空间写入 `scope=default` 后，新空间 `document.cookie` 为空，切回默认空间 cookie 仍在。
+- **标签条与浏览器真实标签页实时同步**：host 在 `_seedTabs()` 里打开 `Target.setDiscoverTargets`，此前浏览器只把它主动 attach 过的页面报给插件，用户在窗口里自己按 ⌘T 新开、关掉、改标题的标签页要等到下次启动才出现，面板那一排和浏览器上那一排对不上；现在 `Target.targetCreated` / `targetInfoChanged` 一到就进列或退列，当前页地址与标题也随事件刷新。标签行标题改成「标签页 N」并说明点击行为（切到前台 + 后续标注从该页取），ego lite 下多一枚「仅 agent 空间」提示。新增 e2e：绕开插件 `navigate` 直接 `Target.createTarget` 开页，断言 6s 内出现在标签条、数量 +1、点一下变当前页。
+
+- **标签条平铺 + 「更多」弹层**：此前一行放不下就横向滚动，5 个标签就把这条挤成一条滑轨；现在从左到右换行平铺，直接给前 10 个，第 11 个起收进「更多 N」弹层，整行列出、选中后自动收起。切分逻辑下沉为 `lib/shared/tabs.js` 的 `splitTabs` 纯函数并补单测。
+
+### Changed
+
+- **标签标题不再停在 URL**：第二个标签页此前一直显示地址，因为标题只在 `Target.targetInfoChanged` 送达时更新，而事件常常在页面写好标题之前就到（甚至这一页 attach 前就改完了）。现在 `_upsertTab` 就地合并（不再 filter+push 打乱整排）、地址没变而事件没带标题时保留旧标题，并把合并规则下沉为 `mergeTab`；面板每秒轮询 `/state` 时 host 顺手 `Target.getTargets` 对一遍账（800ms 节流、指纹没变不 emit），标题晚了也会自动补上。e2e 增加断言：绕开 `navigate` 新开的页面，6s 内标题回填成页面里的 `<title>`。
+
+- **「空间」一栏只在 ego lite 下显示**：Chrome / Edge 用插件专属 profile，整块环境本来就是隔离的，再叠一层 BrowserContext 只会让面板更复杂；ego lite 会与用户自己那一屏共存，才需要独立空间。`/space` 与 `/state.spaces` 对任何浏览器仍可用，只是面板不再渲染这一行。
+
+- **标注交互界面重做视觉**：注入层换成一套独立的暖墨色切面（朱砂主色 `#ff7a45` + 等宽字体做元信息），不再跟随页面明暗，深色站点上也不会糊成一片。标注卡重排为「序号 / 元素名 / 尺寸 / 复制选择器」头部 + 选择器芯片 + 元素文字摘录 + 输入区 + 键位提示，卡片旁的小尖角指向目标元素并随翻转换向；拾取中的元素在卡片打开期间保持常亮（此前 `render()` 会清掉高亮，用户打字时看不出标的是谁），页面滚动/改窗口大小时卡片与高亮一起跟随。右下角胶囊与控制台改为半透明磨砂面，快捷键显示为 `⌥ A` / `Alt A`，新增「复制选择器」。随后按可读性反馈调了一轮字号与按钮尺寸：卡片正文 13.5px、元信息 12px、按钮高度 42~45px（此前约 34px）、提交按钮把快捷键拆成 `⌘` `↵` 两枚独立键帽（Windows/Linux 为 `Ctrl` `↵`）、左侧只留一枚 `Esc` 键帽不再重复「取消」、卡片右上「复制」放大到 26px 高、悬停标签 12px。注入层 REV 升到 9。
+- **标注卡按钮对齐与跨平台键名**：`取消` 与 `添加标注` 此前一个 42px 一个 45px，顶部与底部各差 1.5px，看着像没对齐；现在同高 42px 并改用 `inline-flex` 居中，键帽也锁成 20px 高。键名按平台给：macOS 显示 `⌘` `⏎`，Windows/Linux 显示 `Ctrl` `Enter`（此前非 Mac 也画 `↵`；Mac 的 ↵ 在 12px 等宽字体里细得看不出是个键，换成更粗的 ⏎，单字符键帽再单独放大到 13px），按钮 `title` 同步；引用原文块去掉左边缘那条 2px 橙线，改用衬线体开引号做书签标记，正文不再手工包中文引号（顺带修掉 CSS 码点写成单反斜杠、被 JS 当八进制转义吃掉、卡片上画出字母 C 的问题）。注入层 REV 升到 10。
+- **已连接时也能换浏览器**：`/launch` 收到与当前不同的 `browser` 会先关掉旧窗口（profile 保留）再起新实例，而不是只导航到同一窗口；面板的浏览器选择器从「未连接才显示」改为装了多个就常显，切换即生效。
+- **`/close` 默认不再关窗**：从「关闭浏览器」改为「断开连接」，窗口、标签页与 profile 全部保留，下次 `/launch` 接回同一实例；真正关窗需显式 `{ terminate: true }`（面板菜单的「关闭浏览器」）。host 卸载（DSH 退出）时仍按 `terminate` 收尾，避免窗口留在桌面上。
+- **ego lite 没有自带可调试页面时替它开一个**：ego lite 启动后只开自家 `chrome://` 界面（target 类型 `browser_ui`），`Target.getTargets` 里永远没有 `page`；`_waitForPage` 现在等 1.5s 仍无页面就 `Target.createTarget({url:'about:blank'})`，再走既有导航注入，否则只能等到超时。
+- **ego lite 端到端用例覆盖「复用」**：`test/e2e-browsers.test.mjs` 新增一例——先自己起一个 headless ego，再由第二个 picker 通过它的 `DevToolsActivePort` 接管，断言不 spawn 新进程、切到自己的 agent 空间、断开后对方的进程仍活着；`npm run test:e2e` 默认带 `ADOPT_RUNNING=0`，不会跑到开发者日常开着的 ego 里开会话。
+- **临时文件不再写进代码仓**：浏览器 profile 与元素截图从 `<cwd>/.dsh-visual-annotator/` 迁到操作系统临时目录 `<tmp>/dsh-visual-annotator/<项目名>-<cwd 哈希>/`，同名不同项目互不共享；新增 `DSH_VISUAL_ANNOTATOR_DIR` 覆盖根目录。落点计算下沉为 `lib/shared/scratch-dir.js` 纯函数并补单测。
+
+### Removed
+
+- **右上角「更多」里的「清空全部标注」与「关闭浏览器」**：前者与底部「清空」完全重复（工具条里那份还带条数角标，看着像两套操作）；后者之所以点了没反应，是因为菜单的开关里还引用着上一个版本删掉的 `setConfirmClear`，点「更多」当场抛 `ReferenceError`，整个菜单压根打不开（详见下面的 Fixed）。窗口现在由 DSH 退出时收尾（host 卸载仍走 `/close { terminate: true }`），想立刻关窗直接点浏览器自己的关闭按钮。
+
+### Fixed
+
+- **只写域名（`gitee.com`）打开的是 about:blank**：面板把输入框内容原样交给 `Target.createTarget`，缺协议的字符串不是合法 URL，Chromium 就开一页空白。新增 `lib/shared/url.js` 的 `normalizeAddress` 纯函数并补单测：裸域名补 `https://`、`localhost`/`127.0.0.1`/`[::1]` 补 `http://`（本地开发服务器基本都是 http）、已带协议原样保留、带空格当搜索词；`/launch`、`/navigate`、`/space` 三条入口统一在 host 归一化，面板在成功后把输入框同步成真实地址。实测真 Chrome：输入 `gitee.com` 打开 `https://gitee.com/`，标题为「Gitee - 基于 Git 的代码托管和研发协作平台」；e2e 增加「裸地址（带端口）也能打开」用例。
+
+- **面板点「更多」没反应（`setConfirmClear is not defined`）**：这是上一个版本删掉「确认清空」两步操作时留下的引用，面板脚本没有打包也没有类型检查，只在用户点击那一刻炸。修掉该引用，并给 `lib/client.js` 打开 eslint `no-undef`（浏览器 globals 已配好），以后再删 state 却漏改引用会直接卡在 `npm run lint`。
+- **重连后 agent 空间认错、切回原空间 cookie 不见了**：空间名此前只在内存里（重连时按「有没有页面」临时起名），于是 ego lite 断开再接回时，上次的 `agent 空间` 被改名成「空间」、插件又新建了一个空的 `agent 空间`，原有的页面看着「丢了」；默认空间的 context id 也取自「第一个连上的目标」，而 ego 启动后先连上的是空间页，取到的其实是 agent 空间——按空间切回来后读的是另一个 context，cookie 自然没有。现在空间 id 与名字按「项目 × 浏览器」落盘到 `spaces-<浏览器>.json`（新建/关闭/同步时写），默认空间的 id 改为按「带着页面、且不在 `Target.getBrowserContexts` 列表里」这条差别认回来，四条成功路径（外部 CDP / 接管运行中的 ego / 接回自有 profile / 新 spawn）都先对齐一次空间表。e2e 的 cookie 用例也改成按「启动所在的那个空间」相对断言，不再假设一定是默认空间。
+- **宿主沙箱下 Chrome 起不来（`chrome connection is closed`）现在自己恢复**：宿主自带的沙箱让 Chrome 自己的 sandbox 装不上，浏览器进程在 CDP 握手后立刻 SIGTRAP，表现为「启动成功但所有调用都报连接已关闭」。现在 launch 在三处探活（connect 失败、connect 之后、seed 完成之前），一旦认出「**自己 spawn** 的实例已死」就带上 `--no-sandbox` 重试一次并继续（`/state.sandboxFallback` 变成 `true`、日志一条 warn），同时把「进程已死」当作快速失败信号传进 `_connectWithRetry` / `_waitForPage`，不再干等到 12s/20s 超时（实测首次启动从 6~16s 降到约 4s）。判定下沉为 `shouldTrySandboxFallback` 纯函数并补单测；接回的外部窗口不参与回退，设 `DSH_VISUAL_ANNOTATOR_SANDBOX_FALLBACK=0` 可整体关闭。
+- **e2e 跑完不留浏览器进程与临时目录**：之前 teardown 直接 `rmSync` 临时 profile，会和还在退出的浏览器进程抢目录（`ENOTEMPTY`），异常路径下还会留下孤儿窗口。现在 `teardown` 先 `close({terminate:true})`、等 pid 真的消失（最多 5s）、再 `pkill -f <profileDir>` 兜掉 helper 子进程、最后才删目录（`maxRetries`）；文件末尾的 `after` 钩子把所有建过的临时目录再扫一遍，确保异常中断也不留账。
+- **页面内悬浮菜单与快捷键提示从不显示**：注入层的 CSS 把 `.hud` 容器初始化成 `display:none`，而 `render()` 只切换它的子元素（`.pill` 胶囊 / `.cluster` 控制台），父容器从未被打开——于是 `⌥Option+A` 等快捷键虽然可用，用户却只能盲按。现由 `render()` 显式打开容器，控制台暂停按钮补 `Esc` 键帽、完成按钮说明 `⌘/Ctrl+Enter`；`lib/overlay.js` 的 REV 升到 7，已打开的页面下次 attach 自动换成新注入脚本。单测断言 `nodes.hud.style.display = 'block'` 仍在，e2e 在真实浏览器里校验 `.hud`/`.pill` 的 `computedStyle.display !== 'none'`。
+- **`visual_annotator_read` 从未注册成功（agent 永远看不到该工具）**：工具定义里的可空/多类型字段写成了 `type: ['string','null']`、`type: ['string','integer']`，而 DSH 的 `tools.register()` 只接受单一 `type` 字符串（联合类型须用 `oneOf`），注册时抛 `JsonSchemaError` 并被插件静默吞掉。现改用 `oneOf` 表达，schema 下沉到 `lib/shared/tool-schema.js` 并加回归测试；注册改为等待 `tools` 服务就绪（`ctx.inject`）而非探测一次，失败仍记日志；`/state` 新增 `tool: { registered, error }`，未注册可直接看出来。
+
 ## [0.4.0] - 2026-11-09
 
 ### Added
