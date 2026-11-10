@@ -6,13 +6,13 @@
 
 发版只由一件事触发：**把 `v<版本>` tag 推到 GitHub**。`.github/workflows/release.yml` 接手后续全部：
 
-| 步骤    | 做什么                                                                                                                                                               | 失败条件                            |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| guard   | 校验 tag 名 `v<版本>` 与 `package.json` 的 `version` 完全一致                                                                                                        | 两者不一致，流程立刻失败            |
-| check   | `npm install` + `npm run verify`（check/lint/format/test）+ 校验 `cordis.patch.yml` 含包名                                                                           | 任一门径失败                        |
-| publish | `npm pack` 产出两份字节一致的 tarball（带版本名 + 无版本名 `dsh-visual-annotator.tgz`）→ 建 GitHub Release 并上传资产 → 实际下载一次验证市场链接可用 → `npm publish` | pack 缺文件、资产缺失、npm 凭据问题 |
+| 步骤    | 做什么                                                                                                                                                                                                                                | 失败条件                            |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| guard   | 校验 tag 名 `v<版本>` 与 `package.json` 的 `version` 完全一致                                                                                                                                                                         | 两者不一致，流程立刻失败            |
+| check   | `npm install` + `npm run verify`（check/lint/format/test）+ 校验 `cordis.patch.yml` 含包名                                                                                                                                            | 任一门径失败                        |
+| publish | `npm pack` 产出两份字节一致的 tarball（带版本名 + 无版本名 `dsh-annotator.tgz`（另附旧名 `dsh-visual-annotator.tgz` 兼容副本，官方市场旧链接继续可用））→ 建 GitHub Release 并上传资产 → 实际下载一次验证市场链接可用 → `npm publish` | pack 缺文件、资产缺失、npm 凭据问题 |
 
-无版本名资产是给插件市场用的：市场条目写死 `releases/latest/download/dsh-visual-annotator.tgz`，CI 每次发版重新生成它并**真的下载一次**验证不 404（见 workflow 里 "Verify market tarball is reachable" 一步）。
+无版本名资产是给插件市场用的：市场条目写死 `releases/latest/download/dsh-annotator.tgz`，CI 每次发版重新生成它并**真的下载一次**验证不 404（见 workflow 里 "Verify market tarball is reachable" 一步）。
 
 ## 一条龙命令（agent 可照抄）
 

@@ -1,10 +1,10 @@
-# dsh-visual-annotator bundle layer.
+# dsh-annotator bundle layer.
 #
 # The loader row specifier MUST equal the package.json `name`: the client-modules
 # scan matches the nearest manifest name against the Loader specifier, so an alias
 # here would silently classify the entry as "not a client row" and the Web panel
 # would never load while the host routes kept working.
 - insert:
-    - id: dsh-visual-annotator
-      name: 'dsh-visual-annotator'
+    - id: dsh-annotator
+      name: 'dsh-annotator'
       config: {}

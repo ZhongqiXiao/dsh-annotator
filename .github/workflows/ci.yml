@@ -56,6 +56,6 @@ jobs:
       - name: package.json is valid JSON with a name and version
         run: node -e "const p=require('./package.json'); if(!p.name||!p.version) process.exit(1); console.log(p.name+'@'+p.version)"
       - name: cordis.patch.yml references the package name
-        run: grep -q "dsh-visual-annotator" cordis.patch.yml
+        run: grep -q "dsh-annotator" cordis.patch.yml
       - name: Exports referenced by the bundle exist
-        run: node -e "import('./lib/index.js').then(m=>{if(typeof m.apply!=='function'||m.name!=='dsh-visual-annotator')process.exit(1);console.log('exports ok')})"
+        run: node -e "import('./lib/index.js').then(m=>{if(typeof m.apply!=='function'||m.name!=='dsh-annotator')process.exit(1);console.log('exports ok')})"

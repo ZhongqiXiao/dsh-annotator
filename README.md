@@ -1,6 +1,6 @@
-# dsh-visual-annotator
+# dsh-annotator
 
-[![CI](https://github.com/ZhongqiXiao/dsh-visual-annotator/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhongqiXiao/dsh-visual-annotator/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-visual-annotator)](https://www.npmjs.com/package/dsh-visual-annotator) [![node](https://img.shields.io/badge/node-%3E%3D22-339933)](https://www.npmjs.com/package/dsh-visual-annotator) [![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/zhongqixiao/dsh-visual-annotator)
+[![CI](https://github.com/ZhongqiXiao/dsh-visual-annotator/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhongqiXiao/dsh-visual-annotator/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/dsh-annotator)](https://www.npmjs.com/package/dsh-annotator) [![node](https://img.shields.io/badge/node-%3E%3D22-339933)](https://www.npmjs.com/package/dsh-annotator) [![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/zhongqixiao/dsh-visual-annotator)
 
 一个 [DeepSeek Harness](https://www.deepseek.com) Desktop 插件：在**真实的 Chrome / Edge / ego lite 页面**上拾取、标注、评论、截图页面元素，并把元素定位 + 评论 + 截图一并交给 agent —— 让 agent 按照「你实际看到的页面」做前端可视化修改。
 
@@ -28,28 +28,28 @@
 
 ### 方式 A：插件市场（图形界面）
 
-**DSH 自带「插件」页**：侧栏 → **插件** → **添加插件**，输入准确包名 `dsh-visual-annotator` → 安装。装完提供「立即启用」，需要重启时会提示。
+**DSH 自带「插件」页**：侧栏 → **插件** → **添加插件**，输入准确包名 `dsh-annotator` → 安装。装完提供「立即启用」，需要重启时会提示。
 
-**社区插件市场**：装了 [DSH Plugin Hub](https://dsh-plugin.org)（npm 包 `dsh-plugin`）或 [dshmarket](https://dshmarket.com)（npm 包 `dshmarket`）之后，直接在市场里搜 `dsh-visual-annotator` 安装。DSH Plugin Hub 的[插件页](https://dsh-plugin.org/plugins/zhongqixiao/dsh-visual-annotator)上也有「复制安装命令」按钮。社区市场由第三方维护，收录不代表背书。
+**社区插件市场**：装了 [DSH Plugin Hub](https://dsh-plugin.org)（npm 包 `dsh-plugin`）或 [dshmarket](https://dshmarket.com)（npm 包 `dshmarket`）之后，直接在市场里搜 `dsh-annotator` 安装。DSH Plugin Hub 的[插件页](https://dsh-plugin.org/plugins/zhongqixiao/dsh-visual-annotator)上也有「复制安装命令」按钮。社区市场由第三方维护，收录不代表背书。
 
 ### 方式 B：命令行从 npm 安装（推荐）
 
-包发布在 [npm](https://www.npmjs.com/package/dsh-visual-annotator)，要求 Node.js >= 22。
+包发布在 [npm](https://www.npmjs.com/package/dsh-annotator)，要求 Node.js >= 22。
 
 Desktop：
 
 ```bash
-dsh plugin --profile desktop add dsh-visual-annotator
+dsh plugin --profile desktop add dsh-annotator
 ```
 
 Web：
 
 ```bash
-dsh plugin --profile web add dsh-visual-annotator
+dsh plugin --profile web add dsh-annotator
 dsh web
 ```
 
-钉版本写成 `dsh-visual-annotator@0.5.3`，从仓库装写成 `github:zhongqixiao/dsh-visual-annotator`。
+钉版本写成 `dsh-annotator@0.5.4`，从仓库装写成 `github:zhongqixiao/dsh-visual-annotator`。
 
 ### 方式 C：本地目录（开发模式）
 
@@ -58,11 +58,11 @@ dsh web
 ```jsonc
 {
 	"dependencies": {
-		"dsh-visual-annotator": "link:C:/path/to/dsh-visual-annotator",
+		"dsh-annotator": "link:C:/path/to/dsh-visual-annotator",
 	},
 	"dsh": {
 		"profile": {
-			"bundles": ["dsh-visual-annotator"],
+			"bundles": ["dsh-annotator"],
 		},
 	},
 }
@@ -74,7 +74,7 @@ dsh web
 
 重启 DSH 生效：Desktop 退出后重新打开；Web 端重新跑一次 `dsh web`。GUI 右侧边栏出现「元素标注」面板即安装成功；后续升级只需更新包再重启，面板会自动加载新版。
 
-卸载与更新走同一套入口：侧栏「插件」页里可停用、更新、卸载，命令行则用 `dsh plugin --profile desktop remove dsh-visual-annotator`。
+卸载与更新走同一套入口：侧栏「插件」页里可停用、更新、卸载，命令行则用 `dsh plugin --profile desktop remove dsh-annotator`。
 
 ## 使用流程
 

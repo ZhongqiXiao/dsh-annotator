@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw, ImageFilter
 import math, os
 
-# dsh-visual-annotator storefront icon
+# dsh-annotator storefront icon
 # Brand colors come from the plugin UI (lib/overlay.js):
 #   accent  #ff7a45  (marquee box, labels, HUD)
 #   card    #261d18 -> #191210 dark-brown gradient
