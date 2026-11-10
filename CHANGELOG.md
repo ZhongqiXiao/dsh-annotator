@@ -2,6 +2,13 @@
 
 本文件记录 dsh-visual-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.5.3] - 2026-11-10
+
+### Fixed
+
+- **点「添加标注」或 Ctrl / ⌘ + Enter 时页面闪一屏**：截图一直带着 `clip`，而 Chrome 为了截这一小块会把合成面换成 clip 尺寸重渲染一帧再还原——用 `Page.startScreencast` 抓合成帧可以直接看到：点完之后 +195ms 多出来的一帧尺寸正好等于 clip（228×68），与静止帧差异 70.6%，+255ms 才回到原尺寸且像素与静止帧完全一致，肉眼就是闪一下。现在不再带 clip、也不再撑视口，只截当前视口（`captureBeyondViewport:false`），元素区域改在 Node 侧用新增的 `lib/shared/png.js` 裁出来（自带最小 PNG 解码/编码，没引第三方图像库）。同一段 screencast 复测：截图多推的那一帧是 380×208 且与静止帧**逐像素相同（changed 0）**，无可见变化。HiDPI 下按「截图宽 ÷ 视口宽」换算裁剪框（`--force-device-scale-factor=2` 实测 228×68 CSS 像素裁出 456×114 设备像素，边界按视口夹紧）。
+- **0.5.2 的 host 侧判重没随包发出**：`lib/shared/pick-dedupe.js` 与 `lib/session.js` 里的调用漏在提交之外，v0.5.2 实际只有面板侧的插入闸门与单飞锁。现已补齐：1.5 秒内 url / selector / seq / 矩形 / 备注完全相同的 pick 直接丢弃，一次提交投递多次也只入列一条。
+
 ## [0.5.2] - 2026-11-10
 
 ### Fixed
