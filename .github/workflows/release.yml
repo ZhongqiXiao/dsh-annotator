@@ -30,6 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        # 历史递增门禁需要完整历史：build-sync 在 CI 浅克隆下按设计判红（canary 防假绿），
+        # check job 自己必须先拿全量历史才能过这道门
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
