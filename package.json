@@ -1,6 +1,6 @@
 {
 	"name": "dsh-annotator",
-	"version": "0.5.4",
+	"version": "0.5.5",
 	"description": "Visual element picker for DSH: highlight, annotate, comment and screenshot elements of a real Chrome/Edge page, then hand the selector + comment + shot to the agent.",
 	"type": "module",
 	"main": "./lib/index.js",

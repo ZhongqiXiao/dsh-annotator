@@ -2,13 +2,17 @@
 
 本文件记录 dsh-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-## [Unreleased]
+## [0.5.5] - 2026-11-11
 
 ### Added
 
 - **启动浏览器 / 打开网页后自动进入标注模式**：启动成功即进入 pick；之后打开新网页、切标签页、切空间同样自动进入，面板开关跟着显示为开，不用再点一次。判定逻辑下沉到 `lib/shared/auto-pick.js`（`decideAutoPick` / `nextUserTurnedOff`），`session.js` 只在成功路径上做薄委托。
 - **用户关掉要粘住**：面板里关闭开关后，本次浏览器会话内不再自动开启；再手动打开则恢复（下一次打开网页照常自动进 pick）。新建空间、切空间不会悄悄把它打开。
 - **逃生阀**：`DSH_VISUAL_ANNOTATOR_AUTO_PICK=0` 关掉全部自动行为（只关自动，手动开关仍然可用）。
+
+### Fixed
+
+- **自动进入 pick 后，注入层的端到端用例仍断言折叠胶囊可见**：启动即 pick 时页面里显示的是控制台 `.cluster`、折叠胶囊 `.pill` 是隐藏的，Chrome/Edge 各一条用例因此判红（Browser e2e 已去掉 `continue-on-error`，红就是真红）。断言改为「HUD 可见 + 当前模式该显示的那一个可见」，并新增一条端到端用例覆盖本次功能的三个行为：启动即 pick、用户关掉后打开网页仍粘住、手动再打开后恢复自动。
 
 ## [0.5.4] - 2026-11-11
 
