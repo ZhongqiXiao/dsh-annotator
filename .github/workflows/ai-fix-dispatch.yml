@@ -52,4 +52,15 @@ jobs:
             -H 'GraphQL-Features: issues_copilot_assignment_api_support,coding_agent_model_selection' \
             -f query='mutation($assignable:ID!,$copilot:ID!){assignCopilotToAssignable(input:{assignableId:$assignable,copilotId:$copilot}){assignable{__typename}}}' \
             -f assignable="$ISSUE_ID" -f copilot="$COPILOT_ID"
-          echo "已把 issue 指派给 Copilot coding agent；稍后会出现 copilot/* 分支与 Draft PR（首个 PR 需要一次人工批准）。"
+          # 派单成功与否只能看结果：仓库没启用 coding agent 时，GitHub 会「接受」
+          # mutation 却一个 assignee 都不落（实测 addAssigneesToAssignable 返回空数组），
+          # 不核验就会把「没派出去」报成派单成功。
+          ASSIGNEES="$(gh api graphql \
+            -H 'GraphQL-Features: issues_copilot_assignment_api_support,coding_agent_model_selection' \
+            -f query='query($id:ID!){node(id:$id){... on Issue {assignees(first:20){nodes{login}}}}}' \
+            -f id="$ISSUE_ID" --jq '[.data.node.assignees.nodes[].login] | join(",")')"
+          if ! printf '%s' "$ASSIGNEES" | grep -qi 'copilot'; then
+            echo "::error::派单没有落地（当前 assignees: '${ASSIGNEES}'）：最常见的原因是仓库还没启用 Copilot coding agent——GitHub 会接受 mutation 但一个 assignee 都不加。见 docs/AI-FIX.md 的「排障」。"
+            exit 1
+          fi
+          echo "已把 issue 指派给 Copilot coding agent（assignees: $ASSIGNEES）；稍后会出现 copilot/* 分支与 Draft PR（首个 PR 需要一次人工批准）。"
