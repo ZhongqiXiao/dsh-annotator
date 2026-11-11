@@ -1,7 +1,7 @@
 # 20261110-1727-ce09-ai-native-门禁与自动化闭环改造: AI-Native 门禁与自动化闭环改造
 
 - **Tags**: AI-Native, 门禁, 自动化, CI
-- **Status**: doing · 2026-11-10 18:30:38 · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1
+- **Status**: doing · 2026-11-11 00:35:18 · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1
 - **Created**: 2026-11-10 17:27:45 · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1
 
 <!-- Header lines are maintained by the script, fixed order: Tags → Status → Created → Sealed.
@@ -58,3 +58,4 @@
 - 2026-11-10 17:59:44 · log · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1 · ai-fix 闭环补全：ai-fix-dispatch.yml 打标签即派 Copilot（assignCopilotToAssignable）+ docs/AI-FIX.md 配置文档 + AGENTS.md 领取协议，提交 0920439；期间另一会话并行落地 3c019c7 改名 dsh-annotator（cordis 同步改齐）且 canary-gates.mjs 有在途升级未完成，未触碰他人文件
 - 2026-11-10 18:09:10 · log · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1 · 假门禁三死法修复落地：canary 重写为双向对照 12 场景（阳性 7 / 阴性 5，含 CI 浅克隆红与评分器自证，防递归 env DSH_VA_CANARY_NO_SCORER）；check-build-sync 浅克隆+CI 直接判红；assess 加 --min-score 地板分（npm run assess:gate=80 分进 CI）+D5 钩子 guard 实跑；npm run verify 全绿后提交 d732c14
 - 2026-11-10 18:30:38 · log · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1 · 评分器可信度审计：变异实验证明旧判据三处只在读关键词（钩子只测 guard、canary 只查字样、AC 只查标题词），已改为行为探针并留下 npm run mutate（15 变异全检出，82s），提交 9e348ca
+- 2026-11-11 00:35:18 · log · @xzq · 5945a5b8-02da-4388-a6df-9998187717f1 · 用真 issue 跑通闭环：issue #1/#2（环境缺失诊断）→ 分支 fix/gate-env-diagnostics → PR #3（CI 四项全绿：verify 44s / mutation 46s / e2e 1m7s / manifest 5s）→ squash 合并 97980a9，两个 issue 自动关闭；迁移实测：/tmp/machine-b 全新克隆 npm install + verify 全绿（canary 12/12）。自动派单仍不可用（缺 COPILOT_ASSIGN_TOKEN），已让报错点名该 secret。
