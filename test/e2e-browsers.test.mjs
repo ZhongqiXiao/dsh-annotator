@@ -228,9 +228,13 @@ if (!ENABLED) {
 					const before = picker.snapshot().tabs.length;
 					// 关键：这次开页绕开插件自己的 navigate，模拟用户在浏览器里按 ⌘T 新开的
 					// 那一页——插件只能靠 Target 发现事件知道它，不该等到下次启动。
+					// 用户在浏览器里按 ⌘T 新开的那一页**是前台页**（会把焦点抢过去）；
+					// 之前这里写 background: true 是为了不抢焦点，但 headless Edge 下
+					// 后台页根本不加载，标题永远回填不上——那是测试造出来的场景，
+					// 不是产品缺陷。这里按真实操作建前台页。
 					const created = await picker.cdp.send('Target.createTarget', {
 						url: base + '/live',
-						background: true,
+						background: false,
 						...(spaceId ? { browserContextId: spaceId } : {}),
 					});
 					await waitFor(() => picker.snapshot().tabs.some((tab) => tab.targetId === created.targetId), {
