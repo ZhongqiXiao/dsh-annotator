@@ -31,11 +31,14 @@ hooks/        verify-before-finish.mjs 收尾钩子（未过 verify 不得收工
 
 ```bash
 npm run verify   # check + lint + format:check + test + gates + canary——提交前必跑，全绿才算过门径
-npm run gates    # 只跑两道物理门禁（build-sync 三契约 / embedded-runtime 运行时约束）
+npm run gates    # 三道物理门禁：build-sync 三契约 / embedded-runtime 运行时约束 / gate-doctor 合入闸门自洽
+npm run gate:doctor # 只体检合入闸门（离线）：必需检查名必须真的存在且由 PR 触发
+npm run gate:live   # 线上分支保护 vs gate/branch-protection.json 逐项对比（需要 gh 管理员）
+npm run gate:apply  # 把 gate/branch-protection.json 写进线上分支保护（幂等，别去网页手点）
 npm run canary   # canary 演练（双向对照 12 场景）：阳性=违规必须拦、阴性=干净必须放行、CI 浅克隆必须红、评分器自证
 npm run assess   # AI-Native 成熟度评分（--write-docs 写入 docs/ai-native-health-report.md）
 npm run assess:gate # 评分地板分（--min-score 80）：低于地板分 exit 1，CI 强制——评分器不许自己永远 exit 0
-npm run mutate   # 评分器的评分器：克隆本仓打坏 15 个控制项，断言分数必须逐个下降（检不出的变异 = 判据在骗人）
+npm run mutate   # 评分器的评分器：克隆本仓打坏 16 个控制项，断言分数必须逐个下降（检不出的变异 = 判据在骗人）
 npm run format   # prettier 全量格式化
 npm run lint:fix # eslint 自动修复
 npm test         # 只跑单元测试
@@ -65,8 +68,9 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 2026-11-11 的教训：issue #4 被手动关闭了，但 main 上的 Browser e2e 其实是红的——「关 issue」不等于「验证过」。现在这条路在服务端被物理堵住：
 
 - **main 只能通过 PR 合入**：分支保护开了 `enforce_admins: true`，直推与强制推送一律被拒，管理员也不例外。
-- **四个必需检查全绿才允许合并**：`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Browser e2e`、`Plugin manifest integrity`；且 `strict: true`，分支落后 main 要先同步再重跑。
-- **issue 只由 PR 合入时自动关闭**：PR 正文写 `Resolves #N`，合并成功才关。**不要手动关闭一个没被 PR 验证过的 issue。**
+- **五个必需检查全绿才允许合并**：`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Browser e2e`、`Plugin manifest integrity`、`PR contract (Resolves #N)`；且 `strict: true`，分支落后 main 要先同步再重跑。
+- **issue 只由 PR 合入时自动关闭**：`PR contract` 这条检查强制 PR 正文带 `Resolves #N`（`.github/workflows/pr-gate.yml`，正文改了会重跑），没绑定 issue 的 PR 合不进去。**不要手动关闭一个没被 PR 验证过的 issue。** 确实不关联 issue 的改动（发版、纯文档、闸门自身）给 PR 打 `no-issue` 标签——跳过闭环是一次显式、可审计的动作，不是默认放行。
+- **闸门是配置即代码**：`gate/branch-protection.json` 是唯一声明处，改它再用 `npm run gate:apply` 上闸；`npm run gate:doctor`（离线、进 `npm run verify`）断言每个必需检查名真的存在于某条 workflow 的 job name 且那条 workflow 在 `pull_request` 上触发——防「job 改名 → context 永远不上报 → 所有 PR 永久卡死」。`npm run gate:live` 对比线上有没有被手改。**别在网页上点分支保护**：网页改动没有任何人核，正是 issue #4 那类事故的温床。
 - 发版提交（`chore(release)`）同样走 PR；tag 不在保护范围内，PR 合并后再推 tag（见 [docs/RELEASE.md](docs/RELEASE.md)）。
 - 排障：Copilot 的 PR 首次 CI 会停在 `action_required`（外部贡献者闸门，checks 其实没跑），需人工点 Approve；`copilot/**` 的 push 事件另有一条触发，见 [docs/AI-FIX.md](docs/AI-FIX.md)。
 

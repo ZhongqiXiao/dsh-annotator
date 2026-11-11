@@ -21,4 +21,4 @@ Resolves #
 - [ ] `npm run verify` 全绿
 - [ ] 四个必需检查全绿：`Verify` / `Scorer mutation test` / `Browser e2e` / `Plugin manifest integrity` 全部 success（main 分支保护要求）
 - [ ] 分支已与 main 同步（保护规则是 strict：落后时先合并 main 再重跑）
-- [ ] 正文 `Resolves #N` 已填：issue 只由合并自动关闭，不要提前手关
+- [ ] 正文 `Resolves #N` 已填：`PR contract (Resolves #N)` 会检查这条，issue 只由合并自动关闭，不要提前手关（无关联 issue 的改动给 PR 打 `no-issue` 标签，并在正文说明原因）
