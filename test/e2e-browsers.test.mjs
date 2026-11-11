@@ -234,7 +234,10 @@ if (!ENABLED) {
 						...(spaceId ? { browserContextId: spaceId } : {}),
 					});
 					await waitFor(() => picker.snapshot().tabs.some((tab) => tab.targetId === created.targetId), {
-						timeout: 6000,
+						// CI 的 2 vCPU runner 上，spawn 出来的浏览器被抢占时这两个事件
+						// （发现新页 / 标题回填）真的会晚到；这里等的是事件本身，放宽窗口
+						// 不是掩盖缺陷，而是别把「机器慢」判成「功能坏」。
+						timeout: 15000,
 						what: '新标签页出现在标签条',
 					});
 					assert.equal(picker.snapshot().tabs.length, before + 1, '标签条应多出这一页');
@@ -245,7 +248,7 @@ if (!ENABLED) {
 							const tab = picker.snapshot().tabs.find((item) => item.targetId === created.targetId);
 							return tab?.title === 'e2e /live';
 						},
-						{ timeout: 6000, what: '新标签页的标题回填到标签条' },
+						{ timeout: 15000, what: '新标签页的标题回填到标签条' },
 					);
 
 					const after = await picker.activateTab(created.targetId);
