@@ -32,6 +32,15 @@ gh pr checks <pr-number>                                   # 看 CI 验证结果
 - issue 描述越精确产出越好；验收标准段尤其要写成可执行断言（模板里有示例）。
 - Copilot 修完不等于验证通过：合并前看 CI `Verify` job 全绿，这也是本仓门禁存在的意义。
 
+## 合入闸门：跑过用例才能合入
+
+main 已开启分支保护（`enforce_admins: true`）：**只能经 PR 合入**，且四个必需检查全绿才允许合并——`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Browser e2e`、`Plugin manifest integrity`，并要求分支与 main 同步（strict；落后就先同步再重跑）。
+
+- **issue 只由 `Resolves #N` 合入时自动关闭**。不要手动关闭一个没被 PR 验证过的 issue——本仓 2026-11-11 就发生过 issue #4 手动关闭后 main 的 Browser e2e 仍红。
+- **Copilot PR 首次推送会停在 `action_required`**（外部贡献者闸门），此时 checks **没有真正跑**，别把灰色当绿色；有写权限的人点一次 Approve to run。
+- **`copilot/**` 分支的 push 也会触发 CI**（`.github/workflows/ci.yml` 的 push 分支列表包含它）；push 事件没有 action_required 闸门，所以 Copilot 每次推送都自动验证。
+- 合并按钮只有在四门绿时才点得动，这是服务端行为，不靠自觉。
+
 ## 排障：派单没动静
 
 按 2026-11-11 实测（issue #4）的两种失败形态逐条核对：

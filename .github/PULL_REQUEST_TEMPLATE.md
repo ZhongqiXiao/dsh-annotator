@@ -19,3 +19,6 @@ Resolves #
 - [ ] 改了 `lib/client.js`：HOST_REV（lib/index.js）与 PANEL_BUILD（lib/client.js）已同步递增，且 HOST_REV 引入提交晚于 client 最后改动
 - [ ] 改了 `lib/overlay.js` 注入载荷：`var REV` 已递增
 - [ ] `npm run verify` 全绿
+- [ ] 四个必需检查全绿：`Verify` / `Scorer mutation test` / `Browser e2e` / `Plugin manifest integrity` 全部 success（main 分支保护要求）
+- [ ] 分支已与 main 同步（保护规则是 strict：落后时先合并 main 再重跑）
+- [ ] 正文 `Resolves #N` 已填：issue 只由合并自动关闭，不要提前手关

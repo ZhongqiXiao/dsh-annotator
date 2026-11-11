@@ -25,4 +25,4 @@ CI 的 `Verify` job 跑的就是 `npm run verify`；它红 = 你的改动还没�
 
 ## 闭环
 
-PR 正文写 `Resolves #<issue>`，合并即自动关闭 issue。合并前确认 CI 全绿——Copilot 修完不等于验证通过。
+PR 正文写 `Resolves #<issue>`，合并即自动关闭 issue。合并前确认 CI 全绿——Copilot 修完不等于验证通过。main 有分支保护：`Verify`、`Scorer mutation test`、`Browser e2e`、`Plugin manifest integrity` 四项全绿且分支与 main 同步，合并按钮才点得动；检查红着时不要标 Ready 交付。
