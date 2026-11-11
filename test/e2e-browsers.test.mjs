@@ -172,11 +172,14 @@ if (!ENABLED) {
 
 					// 页面里的悬浮菜单必须真的可见：.hud 在 CSS 里是 display:none，
 					// 少了 render() 里那行就会连胶囊一起隐身，用户只能盲按快捷键。
+					// 启动后默认自动进入 pick（lib/shared/auto-pick.js），此时显示的是控制台
+					// .cluster，折叠胶囊 .pill 反而是隐藏的——按当前模式挑该显示的那个来断言，
+					// 否则一条「自动进入标注模式」的改动会把这条注入用例判成回归。
 					await evaluateEventually(
 						picker,
 						'(() => { const host = document.getElementById("' +
 							OVERLAY_ROOT +
-							'"); const root = host && host.shadowRoot; const hud = root && root.querySelector(".hud"); const pill = root && root.querySelector(".pill"); if (!hud || !pill) return null; return getComputedStyle(hud).display !== "none" && getComputedStyle(pill).display !== "none"; })()',
+							'"); const root = host && host.shadowRoot; const hud = root && root.querySelector(".hud"); const cluster = root && root.querySelector(".cluster"); const pill = root && root.querySelector(".pill"); if (!hud || !cluster || !pill) return null; if (getComputedStyle(hud).display === "none") return false; const on = document.documentElement.classList.contains("__dsh-vp-pick"); return getComputedStyle(on ? cluster : pill).display !== "none"; })()',
 						(value) => value === true,
 						'HUD 可见',
 					);
@@ -213,6 +216,46 @@ if (!ENABLED) {
 						42,
 						'页面实例应是同一个（标记还在）',
 					);
+				});
+			} finally {
+				await teardown(picker, dir);
+			}
+		});
+
+		test(label + '：启动即进入标注模式，用户关掉后打开网页仍粘住', async (t) => {
+			// ego lite 启动会接管既有窗口，导航语义与 Chrome/Edge 不同（它有自己的
+			// 窗口复用用例）；这条验收的是 issue #4 的行为，只在 Chrome/Edge 上跑。
+			if (browser === 'ego') return t.skip('ego lite 的窗口接管与导航语义不同，另有用例覆盖');
+
+			const { dir, picker } = makePicker();
+			try {
+				await withServer(async (base) => {
+					const launched = await picker.launch({ browser, cwd: dir, url: base + '/a' });
+					assert.equal(launched.mode, 'pick', '启动后应直接进入标注模式，不用再点一次');
+					// host 状态对、注入层没跟上时用户看到的还是关着的，所以两边都要验。
+					await evaluateEventually(
+						picker,
+						'(window.__DSH_VP__ || {}).getMode ? window.__DSH_VP__.getMode() : null',
+						(value) => value === 'pick',
+						'注入层也进入 pick',
+					);
+
+					await picker.setMode('off');
+					assert.equal(picker.snapshot().mode, 'off');
+					// 用户关掉之后打开新网页：不能再被自动打开（要粘住用户的选择）。
+					await picker.navigate(base + '/b');
+					assert.equal(picker.snapshot().mode, 'off', '用户关掉后打开网页仍应是关的');
+					await evaluateEventually(
+						picker,
+						'(window.__DSH_VP__ || {}).getMode ? window.__DSH_VP__.getMode() : null',
+						(value) => value === 'off',
+						'新页面也保持关闭',
+					);
+
+					// 再手动打开：恢复正常，下一次打开网页照常自动进入。
+					await picker.setMode('pick');
+					await picker.navigate(base + '/c');
+					assert.equal(picker.snapshot().mode, 'pick', '手动再打开后，打开网页应恢复自动进入');
 				});
 			} finally {
 				await teardown(picker, dir);
