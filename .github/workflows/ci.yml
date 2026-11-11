@@ -53,9 +53,8 @@ jobs:
         run: npm run mutate
 
   e2e:
-    name: Browser e2e (best effort)
+    name: Browser e2e
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

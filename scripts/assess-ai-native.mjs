@@ -364,9 +364,9 @@ add(d6, 3, 'CI 运行测试', !!ci && /(npm test|npm run verify|node --test)/.te
 add(
 	d6,
 	4,
-	'e2e 进 CI（允许 continue-on-error）',
-	!!ci && /(test:e2e|E2E)/.test(ci),
-	'ci.yml 增加 e2e job，continue-on-error: true',
+	'e2e 进 CI 且是真门禁（失败不会被吞）',
+	!!ci && /(test:e2e|E2E)/.test(ci) && !/continue-on-error/.test(ci),
+	'ci.yml 跑 e2e job，且不写 continue-on-error（失败就该红）',
 	'text',
 );
 

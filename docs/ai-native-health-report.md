@@ -1,6 +1,6 @@
 # AI-Native 健康报告
 
-> 由 scripts/assess-ai-native.mjs 生成于 2026-11-10
+> 由 scripts/assess-ai-native.mjs 生成于 2026-11-11
 
 ```
 AI-Native 成熟度：100/100（Tier 1 · Exemplar）
