@@ -60,6 +60,16 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 - **证据分级（评分不是一个人说了算）**：评分项分两级——`exec` 真跑进程看退出码（门禁、canary、收尾钩子的正向+失败方向、哨兵探针），`text` 只读文本存在性（AGENTS.md 关键词、模板段落、CI 配置行）。报告显式分列两者；文本项堆满最多 78 分，所以 **Tier 1 额外要求执行型探针全绿**。别把 100 分当成「质量已被证明」，它只说明「配置面齐备 + 可执行面全绿」。
 - **变异测试（`npm run mutate`）**：克隆本仓，逐个打坏控制项（删 AGENTS.md、桩化门禁、桩化 canary、钩子改成无条件放行、抹掉地板分……共 15 个），断言评分必须下降。这条是评分器自己的 canary：判据一旦退化成「读关键词」，变异就会存活，命令直接红。
 
+## 合入门槛（main 受分支保护）
+
+2026-11-11 的教训：issue #4 被手动关闭了，但 main 上的 Browser e2e 其实是红的——「关 issue」不等于「验证过」。现在这条路在服务端被物理堵住：
+
+- **main 只能通过 PR 合入**：分支保护开了 `enforce_admins: true`，直推与强制推送一律被拒，管理员也不例外。
+- **四个必需检查全绿才允许合并**：`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Browser e2e`、`Plugin manifest integrity`；且 `strict: true`，分支落后 main 要先同步再重跑。
+- **issue 只由 PR 合入时自动关闭**：PR 正文写 `Resolves #N`，合并成功才关。**不要手动关闭一个没被 PR 验证过的 issue。**
+- 发版提交（`chore(release)`）同样走 PR；tag 不在保护范围内，PR 合并后再推 tag（见 [docs/RELEASE.md](docs/RELEASE.md)）。
+- 排障：Copilot 的 PR 首次 CI 会停在 `action_required`（外部贡献者闸门，checks 其实没跑），需人工点 Approve；`copilot/**` 的 push 事件另有一条触发，见 [docs/AI-FIX.md](docs/AI-FIX.md)。
+
 ## 任务台账
 
 任务进度、工作事项与工作日志统一交给 `task-ledger` skill（DSH 的 dsh-task-ledger）管理，不在仓库里另建清单：
@@ -72,5 +82,5 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 ## 提交与发布
 
 - Conventional Commits（`feat:` / `fix:` / `chore:` / `docs:`）。
-- 发版：改 `package.json` version + 在 `CHANGELOG.md` 记录 → 提交 → 打 `v*` tag 推送，CI 自动出 GitHub Release（tag 与 package.json 版本不一致会 guard 失败）。
+- 发版：改 `package.json` version + 在 `CHANGELOG.md` 记录 → 提交并经 **PR** 合入 main → 打 `v*` tag 推送，CI 自动出 GitHub Release（tag 与 package.json 版本不一致会 guard 失败）。
 - **发版全流程看 [docs/RELEASE.md](docs/RELEASE.md)**（agent 发版照它执行）：推 tag 后 CI 自动完成 GitHub Release + npm publish + 插件市场 tarball 更新（一条龙命令、前提、常见故障都在里面，插件市场已收录、发版无需再动它）。

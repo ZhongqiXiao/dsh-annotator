@@ -25,9 +25,16 @@ npm version 0.5.4 --no-git-tag-version
 git add package.json package-lock.json CHANGELOG.md
 git commit -m "chore(release): v0.5.4"
 
-# 3. 打 tag 并推送
+# 3. 经 PR 合入 main（main 有分支保护，直推会被拒）
+git push -u origin chore/release-0.5.4
+gh pr create --title "chore(release): v0.5.4" \
+  --body "发版提交：版本号 + CHANGELOG。无关联 issue（发版不关 issue）。"
+gh pr checks --watch          # 等四个必需检查全绿（Verify / Scorer mutation test / Browser e2e / Plugin manifest）
+gh pr merge --squash --delete-branch
+git checkout main && git pull --ff-only
+
+# 4. 打 tag 并推送（tag 不在分支保护范围内，单独推）
 git tag v0.5.4
-GIT_TERMINAL_PROMPT=0 git push origin main
 GIT_TERMINAL_PROMPT=0 git push origin v0.5.4   # 轻量 tag 不会被 --follow-tags 带走，必须单独推
 ```
 
@@ -53,6 +60,7 @@ GIT_TERMINAL_PROMPT=0 git push origin v0.5.4   # 轻量 tag 不会被 --follow-t
 ## 常见故障
 
 - **guard 失败**：tag 与 `package.json` 版本不一致。删 tag 重打：`git tag -d v0.5.4 && git push origin :refs/tags/v0.5.4`，修好版本号后重打重推。
+- **直推 main 被拒**（`protected branch hook declined`）：main 已开分支保护（四门全绿才能合并、管理员也不例外），按第 3 步走 PR；tag 推送不受影响。
 - **忘了单独推 tag**：`--follow-tags` 只带 annotated tag，本仓库用的是轻量 tag，所以第 3 步两条 push 缺一不可。
 - **CI 里 npm 发布被跳过**：日志出现 `NPM_TOKEN secret not configured` —— 去仓库 Settings 配好 secret 后 `gh run rerun <run-id>` 重跑（Release 步骤对已存在的 Release 用 `--clobber` 补传资产，重跑安全）。
 - **npm 上已有同名版本**（403 already published）：说明版本号没递增，回到第 1 步换新版本号。
