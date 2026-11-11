@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - main
+      # Copilot coding agent 提交的 PR 会被 GitHub 打成 action_required（要人工点
+      # Approve 才跑 workflow），自动修复就断在「验证」这一步。push 事件没有这道
+      # 闸门，所以让 copilot/** 的 push 直接跑同一条 verify。
+      - 'copilot/**'
     # 台账自动提交只动 ledger/（改不了代码），跳过以免 Actions 列表被「记进展」刷屏；
     # 代码或混合提交照常触发，Release workflow（tag 触发）不受影响。
     paths-ignore:
