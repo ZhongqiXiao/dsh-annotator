@@ -1,0 +1,16 @@
+{
+	"$comment": "合入闸门的唯一声明处：npm run gate:apply 把它写进 GitHub 分支保护，npm run gate:doctor -- --live 对比线上是否漂移。改闸门只改这里，不要去网页上点——网页上的改动没有任何人核，正是 issue #4 那类事故的温床。",
+	"branch": "main",
+	"strict": true,
+	"enforceAdmins": true,
+	"requiredApprovals": 0,
+	"allowForcePushes": false,
+	"allowDeletions": false,
+	"requiredChecks": [
+		"Verify (check, lint, format, tests, gates, canary)",
+		"Scorer mutation test (评分器的评分器)",
+		"Browser e2e",
+		"Plugin manifest integrity",
+		"PR contract (Resolves #N)"
+	]
+}

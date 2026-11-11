@@ -1,0 +1,37 @@
+name: PR Gate
+
+# 「issue 只由 PR 合入自动关闭」的物理契约：PR 正文必须写 Resolves/Closes/Fixes #N，
+# 否则这条必需检查红、合并按钮点不动。没关联 issue 的 PR（发版、纯文档、闸门自身）
+# 给 PR 打 no-issue 标签即可通过——把「跳过闭环」变成一次显式的、可审计的动作。
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  issue-contract:
+    name: PR contract (Resolves #N)
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR body links an issue (or carries the no-issue label)
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # 正文与标签都只经环境变量进入脚本，不做表达式插值——PR 正文是外部输入
+          if printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'no-issue'; then
+            echo "PR #$NUMBER 带 no-issue 标签：本次改动不关联 issue，放行。"
+            exit 0
+          fi
+          LINK="$(printf '%s' "$BODY" | grep -Eio '(resolves|closes|fixes)[[:space:]]+#[0-9]+' | head -n1 || true)"
+          if [ -n "$LINK" ]; then
+            echo "PR #$NUMBER 绑定 issue：$LINK"
+            exit 0
+          fi
+          echo "::error::PR 正文里没有 Resolves #<issue>。本仓的 issue 只由 PR 合入自动关闭：请在正文写「Resolves #123」；确实不关联 issue（发版/文档/闸门自身）请给 PR 打 no-issue 标签。"
+          exit 1

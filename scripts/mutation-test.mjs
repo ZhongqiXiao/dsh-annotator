@@ -122,6 +122,18 @@ const mutations = [
 		},
 	},
 	{
+		id: 'M16 ci.yml 把 Verify job 改名（闸门等一个不存在的 context）',
+		apply: (d) =>
+			wr(
+				d,
+				'.github/workflows/ci.yml',
+				rd(d, '.github/workflows/ci.yml').replace(
+					'Verify (check, lint, format, tests, gates, canary)',
+					'Verify renamed',
+				),
+			),
+	},
+	{
 		id: 'M15 评分器删掉地板分（自证失效）',
 		apply: (d) => {
 			const s = rd(d, 'scripts/assess-ai-native.mjs').replace(/--min-score/g, '--zzz');

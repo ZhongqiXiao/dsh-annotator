@@ -341,7 +341,7 @@ add(
 );
 add(
 	d5,
-	3,
+	2,
 	'bug 模板带 ai-fix 触发标签',
 	!!bugTpl && /ai-fix/.test(bugTpl),
 	'issue 模板 front-matter labels 加 ai-fix，供编码 agent 认领',
@@ -350,11 +350,60 @@ add(
 const prTpl = read('.github/PULL_REQUEST_TEMPLATE.md');
 add(
 	d5,
-	3,
+	2,
 	'PR 模板绑定 Resolves #issue',
 	!!prTpl && /Resolves/.test(prTpl),
 	'PR 模板加 Resolves #N，形成闭环引用',
 	'text',
+);
+
+// 合入闸门的体检器必须自证有效：把某个 job 显示名改掉，gate-doctor 必须变红。
+// 只断言「文件存在」的话，把 gate-doctor 写成 exit 0 照样满分——本仓已经在这上面栽过
+// （M07/M09：桩化的 canary 与无条件放行的钩子都曾被尝到分）。
+let gateProbe = false;
+let gateProbeDetail = '探针未跑';
+try {
+	const fx = mkdtempSync(path.join(tmpdir(), 'va-gate-'));
+	const cp = (rel) => {
+		const dst = path.join(fx, rel);
+		mkdirSync(path.dirname(dst), { recursive: true });
+		copyFileSync(path.join(repoRoot, rel), dst);
+	};
+	try {
+		cp('scripts/gate-doctor.mjs');
+		cp('gate/branch-protection.json');
+		cp('.github/PULL_REQUEST_TEMPLATE.md');
+		for (const f of readdirSync(path.join(repoRoot, '.github/workflows'))) cp(path.join('.github/workflows', f));
+		const run = () =>
+			spawnSync(process.execPath, [path.join(fx, 'scripts/gate-doctor.mjs')], {
+				cwd: fx,
+				encoding: 'utf8',
+				timeout: 90000,
+			});
+		const clean = run();
+		const ciPath = path.join(fx, '.github/workflows/ci.yml');
+		writeFileSync(
+			ciPath,
+			readFileSync(ciPath, 'utf8').replace(
+				'Verify (check, lint, format, tests, gates, canary)',
+				'Verify renamed (必需检查名字对不上了)',
+			),
+		);
+		const broken = run();
+		gateProbe = clean.status === 0 && broken.status !== 0;
+		gateProbeDetail = '干净夹具=' + clean.status + ' 改名后=' + broken.status;
+	} finally {
+		rmSync(fx, { recursive: true, force: true });
+	}
+} catch (err) {
+	gateProbeDetail = err.message;
+}
+add(
+	d5,
+	2,
+	'合入闸门体检器能检出「必需检查被改名」（实测 ' + gateProbeDetail + '）',
+	gateProbe,
+	'gate-doctor 静态体检失效：job 改名后分支保护等一个永不上报的 context，所有 PR 永久卡死',
 );
 
 // ---------- D6 验证与测试 (10) ----------

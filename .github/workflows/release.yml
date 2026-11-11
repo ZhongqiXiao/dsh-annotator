@@ -39,6 +39,9 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run verify
+      # tag 不受分支保护约束：允许给任意提交打 tag 发布，所以发布链自己把成熟度地板分再拦一次
+      - name: AI-Native maturity floor
+        run: npm run assess:gate
       - name: Manifest integrity
         run: grep -q "dsh-annotator" cordis.patch.yml
 
