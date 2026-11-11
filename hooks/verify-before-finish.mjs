@@ -22,7 +22,27 @@ try {
 }
 if (payload && payload.stop_hook_active) process.exit(0);
 
-const r = spawnSync('npm', ['run', 'verify'], { cwd: repoRoot, stdio: 'inherit', encoding: 'utf8' });
+// 环境缺失要报成环境缺失：npm 不在 PATH、或 Windows 上 npm.cmd 未被解析时，
+// 旧实现会一路走到「verify 未通过」并把锅甩给三契约（issue #1）。
+const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const probe = spawnSync(npmCommand, ['--version'], { encoding: 'utf8' });
+if (probe.error || probe.status !== 0) {
+	console.error(
+		[
+			'',
+			'✗ 收尾未被验证：找不到可用的 npm —— 这是环境问题，不是代码问题。',
+			'',
+			'💡 修复指南：',
+			'- 装 Node 22（npm 随附），并确认 npm 在 PATH 里：`npm --version` 能打印版本。',
+			'- Windows 上钩子调用的是 npm.cmd；npm 装在非默认位置时，把它的目录加进 PATH。',
+			'- 装好后重新收尾，钩子会自动跑 `npm run verify`。',
+			'',
+		].join('\n'),
+	);
+	process.exit(1);
+}
+
+const r = spawnSync(npmCommand, ['run', 'verify'], { cwd: repoRoot, stdio: 'inherit', encoding: 'utf8' });
 if (r.status === 0) {
 	console.log('✓ verify 全绿，可以收尾。');
 	process.exit(0);
