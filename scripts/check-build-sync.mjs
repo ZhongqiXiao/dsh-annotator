@@ -101,10 +101,21 @@ problems.push(...staticCheck.problems.map((p) => ({ ...p, guide: '' })));
 // --- history half -----------------------------------------------------------
 if (!args.skipHistory) {
 	let shallow = false;
+	let inRepo = true;
 	try {
 		shallow = git(args.repo, ['rev-parse', '--is-shallow-repository']) === 'true';
 	} catch {
-		notes.push('不在 git 仓库里，跳过历史校验（保留静态校验）。');
+		inRepo = false;
+	}
+	if (!inRepo) {
+		// 环境问题要报成环境问题：没有 .git 时静默放行历史规则就是假绿（issue #1），
+		// 但也不许把 Node 异常栈甩给用户——新机器 zip 解包第一步就撞这个。
+		problems.push({
+			code: 'not-a-git-repo',
+			message: `不在 git 仓库里（${args.repo} 缺少 .git），无法校验 HOST_REV / PANEL_BUILD / overlay REV 的递增历史。`,
+			guide:
+				'💡 修复指南：git clone 完整仓库后再跑（不要用 zip 解包或纯拷贝目录）；只想要静态校验时显式加 --skip-history，并在结论里注明历史未校验。',
+		});
 	}
 	if (shallow) {
 		const inCi = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
@@ -121,35 +132,46 @@ if (!args.skipHistory) {
 		} else {
 			notes.push('浅克隆：跳过历史校验（本地可用；CI 环境会直接判红）。');
 		}
-	} else {
-		const hostRev = parseHostRev(hostSource);
-		const overlayRev = parseOverlayRev(overlaySource);
-		const clientLast = lastCommit(args.repo, 'lib/client.js');
-		const revIntroduced = hostRev && lastCommit(args.repo, 'lib/index.js', `HOST_REV = 'v${hostRev.number}-`);
-		if (clientLast && revIntroduced && !isAncestor(args.repo, clientLast, revIntroduced)) {
-			problems.push({
-				code: 'client-without-bump',
-				message: `lib/client.js 在 ${clientLast.slice(0, 8)} 被改动，晚于当前 HOST_REV（${hostRev.prefix}）的引入提交 ${revIntroduced.slice(0, 8)}——改面板必须递增 HOST_REV`,
-				guide: FIX_GUIDES['client-without-bump'],
-			});
-		} else if (!revIntroduced && hostRev) {
-			notes.push(`找不到引入 ${hostRev.prefix} 的提交（可能是提交信息或写法变化），跳过 client 侧历史校验。`);
-		}
-
-		const overlayLast = lastCommit(args.repo, 'lib/overlay.js');
-		const overlayIntroduced = overlayRev !== null && lastCommit(args.repo, 'lib/overlay.js', `var REV = ${overlayRev}`);
-		if (overlayLast && overlayIntroduced && !isAncestor(args.repo, overlayLast, overlayIntroduced)) {
-			const patch = git(args.repo, ['show', overlayLast, '--format=', '-U0', '--', 'lib/overlay.js']);
-			const touched = hunksTouchRanges(diffHunkNewRanges(patch), overlayPayloadRanges(overlaySource));
-			if (touched) {
+	} else if (inRepo) {
+		try {
+			const hostRev = parseHostRev(hostSource);
+			const overlayRev = parseOverlayRev(overlaySource);
+			const clientLast = lastCommit(args.repo, 'lib/client.js');
+			const revIntroduced = hostRev && lastCommit(args.repo, 'lib/index.js', `HOST_REV = 'v${hostRev.number}-`);
+			if (clientLast && revIntroduced && !isAncestor(args.repo, clientLast, revIntroduced)) {
 				problems.push({
-					code: 'overlay-without-bump',
-					message: `lib/overlay.js 的注入载荷在 ${overlayLast.slice(0, 8)} 被改动，晚于当前 var REV = ${overlayRev} 的引入提交 ${overlayIntroduced.slice(0, 8)}——改载荷必须递增 REV`,
-					guide: FIX_GUIDES['overlay-without-bump'],
+					code: 'client-without-bump',
+					message: `lib/client.js 在 ${clientLast.slice(0, 8)} 被改动，晚于当前 HOST_REV（${hostRev.prefix}）的引入提交 ${revIntroduced.slice(0, 8)}——改面板必须递增 HOST_REV`,
+					guide: FIX_GUIDES['client-without-bump'],
 				});
-			} else {
-				notes.push('lib/overlay.js 最近一次改动未触及注入载荷（注释/宿主侧），豁免 REV 递增。');
+			} else if (!revIntroduced && hostRev) {
+				notes.push(`找不到引入 ${hostRev.prefix} 的提交（可能是提交信息或写法变化），跳过 client 侧历史校验。`);
 			}
+
+			const overlayLast = lastCommit(args.repo, 'lib/overlay.js');
+			const overlayIntroduced =
+				overlayRev !== null && lastCommit(args.repo, 'lib/overlay.js', `var REV = ${overlayRev}`);
+			if (overlayLast && overlayIntroduced && !isAncestor(args.repo, overlayLast, overlayIntroduced)) {
+				const patch = git(args.repo, ['show', overlayLast, '--format=', '-U0', '--', 'lib/overlay.js']);
+				const touched = hunksTouchRanges(diffHunkNewRanges(patch), overlayPayloadRanges(overlaySource));
+				if (touched) {
+					problems.push({
+						code: 'overlay-without-bump',
+						message: `lib/overlay.js 的注入载荷在 ${overlayLast.slice(0, 8)} 被改动，晚于当前 var REV = ${overlayRev} 的引入提交 ${overlayIntroduced.slice(0, 8)}——改载荷必须递增 REV`,
+						guide: FIX_GUIDES['overlay-without-bump'],
+					});
+				} else {
+					notes.push('lib/overlay.js 最近一次改动未触及注入载荷（注释/宿主侧），豁免 REV 递增。');
+				}
+			}
+		} catch (error) {
+			// git 没装 / 命令失败同样属环境问题：给一行可读结论，不要甩栈
+			problems.push({
+				code: 'git-unavailable',
+				message: 'git 命令不可用或执行失败，无法校验递增历史：' + error.message.split(String.fromCharCode(10))[0],
+				guide:
+					'💡 修复指南：安装 git 并确保它在 PATH 里（CI 用 actions/checkout 自带）；只想要静态校验时显式加 --skip-history。',
+			});
 		}
 	}
 }

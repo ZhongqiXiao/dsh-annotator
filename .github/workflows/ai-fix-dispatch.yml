@@ -19,6 +19,18 @@ jobs:
     if: github.event.label.name == 'ai-fix'
     runs-on: ubuntu-latest
     steps:
+      # 环境配置缺失要报成环境配置缺失：secret 为空时 gh 会抛一句无关的「set GH_TOKEN」，
+      # 排查的人会去翻权限配置而不是补 secret（issue #2）。
+      - name: Preflight — 派单凭据是否就位
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_ASSIGN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::COPILOT_ASSIGN_TOKEN 未配置：拿不到有 Copilot 许可的凭据，无法把 issue 派给 Copilot coding agent。按 docs/AI-FIX.md 配好该 secret 后重新打 ai-fix 标签；不打算用自动派单就删掉本 workflow。"
+            exit 1
+          fi
+
       - name: Look up the Copilot actor and assign it
         env:
           GH_TOKEN: ${{ secrets.COPILOT_ASSIGN_TOKEN }}
