@@ -13,3 +13,6 @@ shots/
 # 部门分享材料（本地产物，不入仓）
 share/
 .archify/
+
+# 任务台账（task-ledger）是本机过程记录，不随代码仓分发；CLI 写入请加 --no-sync（放子命令前）
+ledger/
