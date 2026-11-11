@@ -80,7 +80,7 @@ dsh web
 
 1. 打开 DSH GUI 右侧边栏的 **元素标注** 面板。
 2. 输入地址（可以像浏览器地址栏那样只写域名：`gitee.com` 自动补成 `https://gitee.com/`，`localhost:5173` 补成 `http://`，带空格的一句会当成搜索词），按需在左侧选择浏览器（选过一次就记住），点击 **启动** —— 第一次会打开所选浏览器的真实窗口，之后都接回同一个实例；新地址在同一窗口新开标签页。选 ego lite 时会优先接管你已经开着的那个 ego lite，并在其中切到「agent 空间」。
-3. 开启 **拾取模式**，hover 高亮元素，点击完成拾取。
+3. 启动成功后**自动进入拾取模式**——打开新网页、切标签页、切空间也一样，不用再点一次；hover 高亮元素，点击完成拾取。面板里把开关**关掉**之后，本次会话内不会再自动开启（手动再打开即恢复自动）。
 4. 为该元素填写评论，点击卡片上的 **插入**（或底部 **全部插入（N 条）**）—— 输入框里出现引用芯片 + 元素截图附件。
 5. 插入的同时，这些标注会从列表里移除（底部提示条可 **撤销** 恢复），所以下一轮标注天然从零开始，不用手动逐条清理。
 6. 正常提交对话；agent 收到完整定位信息，随后即可对照页面修改前端代码。
@@ -132,16 +132,17 @@ dsh web
 
 ## 环境变量
 
-| 变量                                             | 作用                                                        |
-| ------------------------------------------------ | ----------------------------------------------------------- |
-| `DSH_VISUAL_ANNOTATOR_CHROME` / `_EDGE` / `_EGO` | 覆盖对应浏览器的可执行文件路径                              |
-| `DSH_VISUAL_ANNOTATOR_WINDOW`                    | 标注窗口尺寸，如 `1440x900`（DIP）；不设则最大化启动        |
-| `DSH_VISUAL_ANNOTATOR_HEADLESS`                  | `1` 时无头启动，仅供插件自测                                |
-| `DSH_VISUAL_ANNOTATOR_BROWSER_ARGS`              | 额外追加给浏览器的启动开关（逃生口，平时不需要）            |
-| `DSH_VISUAL_ANNOTATOR_SANDBOX_FALLBACK`          | 设 `0` 关掉「沙箱崩溃后自动改用 `--no-sandbox` 重试一次」   |
-| `DSH_VISUAL_ANNOTATOR_ADOPT_RUNNING`             | 设 `0` 不接管你已开着的 ego lite，改为自己起一个新实例      |
-| `DSH_VISUAL_ANNOTATOR_DIR`                       | 覆盖临时文件根目录（默认系统临时目录下的同名目录）          |
-| `DSH_VISUAL_ANNOTATOR_CDP_URL`                   | 可选：改为连接该调试端点上的外部浏览器，如 `127.0.0.1:9222` |
+| 变量                                             | 作用                                                           |
+| ------------------------------------------------ | -------------------------------------------------------------- |
+| `DSH_VISUAL_ANNOTATOR_CHROME` / `_EDGE` / `_EGO` | 覆盖对应浏览器的可执行文件路径                                 |
+| `DSH_VISUAL_ANNOTATOR_WINDOW`                    | 标注窗口尺寸，如 `1440x900`（DIP）；不设则最大化启动           |
+| `DSH_VISUAL_ANNOTATOR_HEADLESS`                  | `1` 时无头启动，仅供插件自测                                   |
+| `DSH_VISUAL_ANNOTATOR_BROWSER_ARGS`              | 额外追加给浏览器的启动开关（逃生口，平时不需要）               |
+| `DSH_VISUAL_ANNOTATOR_SANDBOX_FALLBACK`          | 设 `0` 关掉「沙箱崩溃后自动改用 `--no-sandbox` 重试一次」      |
+| `DSH_VISUAL_ANNOTATOR_ADOPT_RUNNING`             | 设 `0` 不接管你已开着的 ego lite，改为自己起一个新实例         |
+| `DSH_VISUAL_ANNOTATOR_AUTO_PICK`                 | 设 `0` 关掉「启动 / 打开网页自动进入标注模式」，改成每次手动开 |
+| `DSH_VISUAL_ANNOTATOR_DIR`                       | 覆盖临时文件根目录（默认系统临时目录下的同名目录）             |
+| `DSH_VISUAL_ANNOTATOR_CDP_URL`                   | 可选：改为连接该调试端点上的外部浏览器，如 `127.0.0.1:9222`    |
 
 插件**不往代码仓写文件**：浏览器 profile 与元素截图都在系统临时目录（macOS `$TMPDIR`、Linux `/tmp`、Windows `%TEMP%`）下的 `dsh-visual-annotator/`。面板带上会话 cwd 时，落点进一步细分到 `<项目名>-<cwd 哈希前 8 位>/`：不同项目各用一份 profile 与截图目录，不会串登录态，也不会互相覆盖。系统重启或临时目录清理后会自然消失，无需手动删除。
 
