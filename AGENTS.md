@@ -36,6 +36,7 @@ npm run gate:doctor # 只体检合入闸门（离线）：必需检查名必须�
 npm run gate:live   # 线上分支保护 vs gate/branch-protection.json 逐项对比（需要 gh 管理员）
 npm run gate:apply  # 把 gate/branch-protection.json 写进线上分支保护（幂等，别去网页手点）
 npm run canary   # canary 演练（双向对照 12 场景）：阳性=违规必须拦、阴性=干净必须放行、CI 浅克隆必须红、评分器自证
+npm run setup:hooks # 启用 pre-commit（每个克隆一次）：提交前自动跑 AI-Native 评分地板分，低于 80 拒绝提交
 npm run assess   # AI-Native 成熟度评分（--write-docs 写入 docs/ai-native-health-report.md）
 npm run assess:gate # 评分地板分（--min-score 80）：低于地板分 exit 1，CI 强制——评分器不许自己永远 exit 0
 npm run mutate   # 评分器的评分器：克隆本仓打坏 16 个控制项，断言分数必须逐个下降（检不出的变异 = 判据在骗人）

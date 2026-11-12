@@ -37,8 +37,16 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Verify
         run: npm run verify
+      # 生成完整评分报告（写入 docs/ai-native-health-report.md 并上传为 artifact，
+      # PR 页面可下载），同时按地板分 80 设闸；gate 不达标时上一步已红，报告照传
       - name: AI-Native maturity floor
-        run: npm run assess:gate
+        run: npm run assess -- --write-docs --min-score 80
+      - name: Upload AI-Native report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-native-health-report
+          path: docs/ai-native-health-report.md
 
   mutation:
     name: Scorer mutation test (评分器的评分器)

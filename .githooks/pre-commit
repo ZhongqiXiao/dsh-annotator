@@ -1,0 +1,4 @@
+#!/bin/sh
+# AI-Native 成熟度地板分闸：低于 80 分拒绝提交。
+# 启用（每个克隆一次）：npm run setup:hooks
+npm run --silent assess:gate
