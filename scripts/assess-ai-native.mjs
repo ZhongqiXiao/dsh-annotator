@@ -9,7 +9,7 @@
  * 因此 Tier 1 要求执行型探针全绿，且报告显式暴露文本项上限分。
  *
  * 评分器自身也不许当假门禁：--min-score <n> 低于地板分 exit 1。
- * Usage: node scripts/assess-ai-native.mjs [--write-docs] [--min-score <n>].
+ * Usage: node scripts/assess-ai-native.mjs [--write-docs] [--detail] [--min-score <n>].
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -455,43 +455,47 @@ const text = [
 ].join(String.fromCharCode(10));
 
 console.log(text);
+// 逐项明细：每个评分项的证据类型（exec=真跑进程 / text=文本存在性）与结果，
+// 让报告不止有分数，还能看出「跑了什么、哪些过哪些挂、挂了怎么修」。
+// --detail 直接打到 stdout（pre-commit 终端可读），--write-docs 落到报告文档。
+const detail = checks
+	.map(
+		(c) =>
+			'## ' +
+			c.name +
+			'（' +
+			c.got +
+			'/' +
+			c.max +
+			'）' +
+			String.fromCharCode(10, 10) +
+			'| 项目 | 证据类型 | 结果 |' +
+			String.fromCharCode(10) +
+			'|---|---|---|' +
+			String.fromCharCode(10) +
+			c.rows
+				.map(
+					(r) =>
+						'| ' +
+						r.label +
+						' | ' +
+						r.kind +
+						' | ' +
+						(r.got ? '✅ ' + r.got + '/' + r.max : '❌ 0/' + r.max + ' — ' + (r.hint || '')) +
+						' |',
+				)
+				.join(String.fromCharCode(10)),
+	)
+	.join(String.fromCharCode(10, 10));
+if (process.argv.includes('--detail')) {
+	console.log(String.fromCharCode(10) + '## 逐项明细' + String.fromCharCode(10, 10) + detail);
+}
 const floorIdx = process.argv.indexOf('--min-score');
 const minScore = floorIdx >= 0 ? Number(process.argv[floorIdx + 1]) : null;
 if (minScore !== null) console.log('地板分：--min-score ' + minScore + ' → ' + (total >= minScore ? '达标' : '未达标'));
 if (process.argv.includes('--write-docs')) {
 	mkdirSync(path.join(repoRoot, 'docs'), { recursive: true });
 	const stamp = new Date().toISOString().slice(0, 10);
-	// 逐项明细：每个评分项的证据类型（exec=真跑进程 / text=文本存在性）与结果，
-	// 让报告不止有分数，还能看出「跑了什么、哪些过哪些挂、挂了怎么修」。
-	const detail = checks
-		.map(
-			(c) =>
-				'## ' +
-				c.name +
-				'（' +
-				c.got +
-				'/' +
-				c.max +
-				'）' +
-				String.fromCharCode(10, 10) +
-				'| 项目 | 证据类型 | 结果 |' +
-				String.fromCharCode(10) +
-				'|---|---|---|' +
-				String.fromCharCode(10) +
-				c.rows
-					.map(
-						(r) =>
-							'| ' +
-							r.label +
-							' | ' +
-							r.kind +
-							' | ' +
-							(r.got ? '✅ ' + r.got + '/' + r.max : '❌ 0/' + r.max + ' — ' + (r.hint || '')) +
-							' |',
-					)
-					.join(String.fromCharCode(10)),
-		)
-		.join(String.fromCharCode(10, 10));
 	writeFileSync(
 		path.join(repoRoot, 'docs/ai-native-health-report.md'),
 		'# AI-Native 健康报告' +
