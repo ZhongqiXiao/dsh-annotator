@@ -20,6 +20,10 @@
 
 - **插件包名改为 `dsh-annotator`**：插件市场与 npm 安装名同步更新（`dsh plugin --profile desktop add dsh-annotator`）。本地开发打包（`npm pack`）产物名与 `cordis.patch.yml` 的 Loader id/name 一并改齐，从仓库装（`github:zhongqixiao/dsh-visual-annotator`）的用法不变。GitHub 仓库名、市场收录页 slug、运行时内部标识（路由 `/api/visual-annotator/*`、agent 工具 `visual_annotator_read`、临时目录名）不变。发版 tarball 以 `dsh-annotator.tgz` 为主资产，另附旧名 `dsh-visual-annotator.tgz` 兼容副本，官方市场旧链接继续可用。
 
+### 勘误（2026-11-12）
+
+- **上条中「GitHub 仓库名、市场收录页 slug 不变」与现状不符**：GitHub 仓库现已改名为 `ZhongqiXiao/dsh-annotator`（旧名 `ZhongqiXiao/dsh-visual-annotator` 走 301 重定向），市场收录页 slug 同步为 `zhongqixiao/dsh-annotator`；旧名链接经重定向继续可用，运行时内部标识（路由 `/api/visual-annotator/*`、agent 工具 `visual_annotator_read`、临时目录名）确实未变。从仓库安装请使用新名：`github:zhongqixiao/dsh-annotator`。
+
 ## [0.5.3] - 2026-11-10
 
 ### Fixed
