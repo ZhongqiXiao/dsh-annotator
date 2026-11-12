@@ -461,6 +461,37 @@ if (minScore !== null) console.log('地板分：--min-score ' + minScore + ' →
 if (process.argv.includes('--write-docs')) {
 	mkdirSync(path.join(repoRoot, 'docs'), { recursive: true });
 	const stamp = new Date().toISOString().slice(0, 10);
+	// 逐项明细：每个评分项的证据类型（exec=真跑进程 / text=文本存在性）与结果，
+	// 让报告不止有分数，还能看出「跑了什么、哪些过哪些挂、挂了怎么修」。
+	const detail = checks
+		.map(
+			(c) =>
+				'## ' +
+				c.name +
+				'（' +
+				c.got +
+				'/' +
+				c.max +
+				'）' +
+				String.fromCharCode(10, 10) +
+				'| 项目 | 证据类型 | 结果 |' +
+				String.fromCharCode(10) +
+				'|---|---|---|' +
+				String.fromCharCode(10) +
+				c.rows
+					.map(
+						(r) =>
+							'| ' +
+							r.label +
+							' | ' +
+							r.kind +
+							' | ' +
+							(r.got ? '✅ ' + r.got + '/' + r.max : '❌ 0/' + r.max + ' — ' + (r.hint || '')) +
+							' |',
+					)
+					.join(String.fromCharCode(10)),
+		)
+		.join(String.fromCharCode(10, 10));
 	writeFileSync(
 		path.join(repoRoot, 'docs/ai-native-health-report.md'),
 		'# AI-Native 健康报告' +
@@ -473,9 +504,13 @@ if (process.argv.includes('--write-docs')) {
 			text +
 			String.fromCharCode(10) +
 			FENCE +
+			String.fromCharCode(10, 10) +
+			'## 逐项明细' +
+			String.fromCharCode(10, 10) +
+			detail +
 			String.fromCharCode(10),
 	);
-	console.log(String.fromCharCode(10) + '已写入 docs/ai-native-health-report.md');
+	console.log(String.fromCharCode(10) + '已写入 docs/ai-native-health-report.md（含逐项明细）');
 }
 if (minScore !== null && Number.isFinite(minScore) && total < minScore) {
 	console.error(

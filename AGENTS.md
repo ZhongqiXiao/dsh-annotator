@@ -60,7 +60,7 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 - **issue → 修复 → 验证闭环**：bug 模板（`.github/ISSUE_TEMPLATE/bug.md`）要求验收标准写成可执行断言（这是自动验证契约）。`ai-fix` 标签 = agent-ready 契约 + 派单触发，两条领取路径：
   - **自动派单**：打上 `ai-fix` 标签后，`.github/workflows/ai-fix-dispatch.yml` 把 issue 指派给 GitHub Copilot coding agent，由它开分支、开 Draft PR；首个 PR 需人工批准一次，之后 CI verify 自动验证。一次性配置见 [docs/AI-FIX.md](docs/AI-FIX.md)。
   - **本地认领**：编码 agent 会话执行 `gh issue list --label ai-fix` 认领，按验收标准修复，PR 用 `Resolves #N` 绑定 issue，合并即闭环。
-- **成熟度评分**：`npm run assess` 按 6 维（治理 15 / 物理拦截 25 / 架构边界 15 / 契约同步 15 / 工作流自动化 20 / 验证测试 10）实跑取证评分，≥90 Exemplar、≥75 AI-Ready；报告落 `docs/ai-native-health-report.md`。CI 在 verify 后另跑 `npm run assess:gate`（--min-score 80），低于地板分直接红。
+- **成熟度评分**：`npm run assess` 按 6 维（治理 15 / 物理拦截 25 / 架构边界 15 / 契约同步 15 / 工作流自动化 20 / 验证测试 10）实跑取证评分，≥90 Exemplar、≥75 AI-Ready；报告落 `docs/ai-native-health-report.md`（`--write-docs` 生成，附逐项「通过/未通过 + 证据类型 + 修复提示」明细表）。CI 在 verify 后另跑 `npm run assess:gate`（--min-score 80），低于地板分直接红。
 - **证据分级（评分不是一个人说了算）**：评分项分两级——`exec` 真跑进程看退出码（门禁、canary、收尾钩子的正向+失败方向、哨兵探针），`text` 只读文本存在性（AGENTS.md 关键词、模板段落、CI 配置行）。报告显式分列两者；文本项堆满最多 78 分，所以 **Tier 1 额外要求执行型探针全绿**。别把 100 分当成「质量已被证明」，它只说明「配置面齐备 + 可执行面全绿」。
 - **变异测试（`npm run mutate`）**：克隆本仓，逐个打坏控制项（删 AGENTS.md、桩化门禁、桩化 canary、钩子改成无条件放行、抹掉地板分……共 15 个），断言评分必须下降。这条是评分器自己的 canary：判据一旦退化成「读关键词」，变异就会存活，命令直接红。
 
