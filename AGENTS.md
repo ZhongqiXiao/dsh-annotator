@@ -35,7 +35,7 @@ npm run gates    # 三道物理门禁：build-sync 三契约 / embedded-runtime 
 npm run gate:doctor # 只体检合入闸门（离线）：必需检查名必须真的存在且由 PR 触发
 npm run gate:live   # 线上分支保护 vs gate/branch-protection.json 逐项对比（需要 gh 管理员）
 npm run gate:apply  # 把 gate/branch-protection.json 写进线上分支保护（幂等，别去网页手点）
-npm run canary   # canary 演练（双向对照 12 场景）：阳性=违规必须拦、阴性=干净必须放行、CI 浅克隆必须红、评分器自证
+npm run canary   # canary 演练（双向对照 14 场景）：阳性=违规必须拦、阴性=干净必须放行、CI 浅克隆必须红、gate-doctor 双向探针、评分器自证
 npm run setup:hooks # 启用 pre-commit（每个克隆一次）：提交前自动跑 AI-Native 评分地板分并把逐项明细打到终端，低于 80 拒绝提交
 npm run assess   # AI-Native 成熟度评分（--write-docs 写入 docs/ai-native-health-report.md）
 npm run assess:gate # 评分地板分（--min-score 80）：低于地板分 exit 1，CI 强制——评分器不许自己永远 exit 0
@@ -55,7 +55,7 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 ## AI-Native 门禁与自动化闭环
 
 - **物理拦截优先于文档约定**：「写在这但没人查」的约束必然翻车。本仓把最容易翻车的两类契约（三版本标记、注入脚本运行时）做成了物理门禁（`scripts/check-build-sync.mjs`、`scripts/check-embedded-runtime.mjs`），CI 与收尾钩子都会跑。
-- **canary 双向自证**：`npm run canary` 共 12 场景，假门禁的三种死法各配探针——永远 exit 0 的门禁（阳性 5：版本 skew、process 泄漏、载荷 require、漏递增的 client/载荷，注入违规必须真判失败）；永远 exit 1 的门禁（阴性 4：干净夹具 ×2、同提交递增、浅克隆本地放行，必须全部放行）；CI 假绿路径（浅克隆 + CI 环境必须直接红，堵死「警告放行」）；永远 exit 0 的评分器（自证 2：`--min-score 101` 必须红、0 必须绿）。任何一类失效，canary 都会红。
+- **canary 双向自证**：`npm run canary` 共 14 场景，假门禁的几种死法各配探针——永远 exit 0 的门禁（阳性 8：版本 skew、process 泄漏、载荷 require、漏递增的 client/载荷、浅克隆 + CI、job name 未加引号的 YAML 行内注释陷阱，注入违规必须真判失败）；永远 exit 1 的门禁（阴性 6：干净夹具 ×2、同提交递增、浅克隆本地放行、加引号的 job name 夹具放行，必须全部放行）；CI 假绿路径（浅克隆 + CI 环境必须直接红，堵死「警告放行」）；永远 exit 0 的评分器（自证 2：`--min-score 101` 必须红、0 必须绿）。任何一类失效，canary 都会红。其中 YAML 行内注释陷阱探针对应 gate-doctor 的新检测：`name:` 值未加引号时 ` #` 之后会被解析器当注释吃掉，必需检查名永远上报不上来（2026-11-12 PR #12 幽灵检查事故）。
 - **收尾钩子**：agent 会话收尾前自动执行 `npm run verify`（`hooks/verify-before-finish.mjs`，注册于 `.claude/settings.json` 的 Stop hook），未全绿会被拦下并给出对号入座的修复指南。
 - **issue → 修复 → 验证闭环**：bug 模板（`.github/ISSUE_TEMPLATE/bug.md`）要求验收标准写成可执行断言（这是自动验证契约）。`ai-fix` 标签 = agent-ready 契约 + 派单触发，两条领取路径：
   - **自动派单**：打上 `ai-fix` 标签后，`.github/workflows/ai-fix-dispatch.yml` 把 issue 指派给 GitHub Copilot coding agent，由它开分支、开 Draft PR；首个 PR 需人工批准一次，之后 CI verify 自动验证。一次性配置见 [docs/AI-FIX.md](docs/AI-FIX.md)。
