@@ -12,7 +12,14 @@ import {
 	pageKeyOf,
 	pageRoleOf,
 	pairAllUnpaired,
+	pairIdsOf,
+	pairRows,
+	pairTo,
+	pairedTargetsOf,
 	pickRoleOf,
+	setPairIds,
+	unpair,
+	unpairAll,
 	refLabelOf,
 	rewritePickRoles,
 	setPageRole,
@@ -186,4 +193,54 @@ test('pairAllUnpaired spreads one reference over the targets still unpaired', ()
 	assert.deepEqual(touched, ['t2', 't3']);
 	assert.equal(picks[0].pairId, 'r2', '已经配对的不覆盖，那可能是用户特意挑的另一条参考');
 	assert.deepEqual(pairAllUnpaired(picks, pages, ''), [], '没给参考就不动');
+});
+test('one target can follow several references, and pairId always mirrors the first', () => {
+	const picks = [
+		{ id: 't1', role: 'target' },
+		{ id: 'r1', role: 'reference' },
+		{ id: 'r2', role: 'reference' },
+	];
+	assert.equal(pairTo(picks, 't1', 'r1'), true);
+	assert.equal(pairTo(picks, 't1', 'r2'), true);
+	assert.equal(pairTo(picks, 't1', 'r1'), false, '重复挂同一条参考不报错也不重复');
+	assert.deepEqual(pairIdsOf(picks[0]), ['r1', 'r2']);
+	assert.equal(picks[0].pairId, 'r1', 'pairId 是第一条，agent 契约只认这一个字段');
+
+	assert.deepEqual(pairedTargetsOf(picks, 'r2'), ['t1']);
+	assert.equal(unpair(picks, 't1', 'r1'), true);
+	assert.deepEqual(pairIdsOf(picks[0]), ['r2'], '解开一条后 pairId 顺移到下一条');
+	assert.equal(picks[0].pairId, 'r2');
+	assert.equal(unpairAll(picks, 't1'), true);
+	assert.deepEqual(pairIdsOf(picks[0]), []);
+	assert.equal(picks[0].pairId, null);
+	assert.equal(unpairAll(picks, 't1'), false, '已经空了就不算改动');
+});
+
+test('pairIdsOf tolerates old records that only carry pairId', () => {
+	assert.deepEqual(pairIdsOf({ id: 't1', pairId: 'r1' }), ['r1']);
+	assert.deepEqual(pairIdsOf({ id: 't1', pairId: null }), []);
+	assert.deepEqual(pairIdsOf({ id: 't1', pairIds: ['r1', 'r1', ''], pairId: 'r2' }), ['r2', 'r1'], '去重且没有空 id');
+	setPairIds({ id: 't1' }, ['r3']);
+	assert.deepEqual(pairIdsOf({ id: 't1', pairIds: ['r3'], pairId: 'r3' }), ['r3']);
+});
+
+test('pairRows hands the panel every reference attached to one target', () => {
+	const page = url('/page');
+	const pages = setPageRole([], { url: page, title: '列表页', role: 'target' }).pages;
+	const picks = [
+		{ id: 't1', role: 'target', pageKey: pageKeyOf(page), pairIds: ['r1', 'r2'], pairId: 'r1' },
+		{ id: 't2', role: 'target', pageKey: pageKeyOf(page) },
+		{ id: 'r1', role: 'reference', pageKey: pageKeyOf(url('/a')) },
+		{ id: 'r2', role: 'reference', pageKey: pageKeyOf(url('/b')) },
+		{ id: 'r3', role: 'reference', pageKey: pageKeyOf(url('/c')) },
+	];
+	const rows = pairRows(picks, pages);
+	assert.equal(rows.length, 3, '两条目标 + 一条没人认领的参考');
+	assert.deepEqual(
+		rows[0].refs.map((ref) => ref.id),
+		['r1', 'r2'],
+	);
+	assert.equal(rows[0].ref.id, 'r1', 'ref 保留第一条，兼容只读一条的调用方');
+	assert.equal(rows[2].target, null);
+	assert.equal(rows[2].ref.id, 'r3', '没配到任何改动的参考单独成行');
 });
