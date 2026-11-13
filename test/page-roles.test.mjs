@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+	clearPairTo,
 	delegationSummary,
 	includedPicks,
 	isResend,
@@ -9,6 +10,7 @@ import {
 	normalizeSpec,
 	pageKeyOf,
 	pageRoleOf,
+	pairAllUnpaired,
 	pickRoleOf,
 	refLabelOf,
 	rewritePickRoles,
@@ -126,4 +128,30 @@ test('delegationSummary is deterministic and names the reference pages and dimen
 	);
 	assert.equal(delegationSummary({ pages, picks: refsOnly }), '按 R1 的布局、配色新建页面。');
 	assert.equal(delegationSummary({ pages: withTarget, picks: [] }), '');
+});
+
+test('deleting a pick clears pairIds that pointed at it', () => {
+	const picks = [
+		{ id: 't1', role: 'target', pairId: 'r1' },
+		{ id: 't2', role: 'target', pairId: 'r2' },
+	];
+	clearPairTo(picks, 'r1');
+	assert.equal(picks[0].pairId, null, '指向被删参考的目标要解开，别留悬空 id');
+	assert.equal(picks[1].pairId, 'r2', '别的配对不受影响');
+	assert.deepEqual(clearPairTo(picks, ''), picks, '空 id 不动任何东西');
+});
+
+test('pairAllUnpaired spreads one reference over the targets still unpaired', () => {
+	const page = url('/page');
+	const pages = setPageRole([], { url: page, title: '列表页', role: 'target' }).pages;
+	const picks = [
+		{ id: 't1', role: 'target', pageKey: pageKeyOf(page), pairId: 'r2' },
+		{ id: 't2', role: 'target', pageKey: pageKeyOf(page) },
+		{ id: 't3', role: 'target', pageKey: pageKeyOf(page) },
+		{ id: 'r1', role: 'reference', pageKey: pageKeyOf(url('/ref')) },
+	];
+	const touched = pairAllUnpaired(picks, pages, 'r1');
+	assert.deepEqual(touched, ['t2', 't3']);
+	assert.equal(picks[0].pairId, 'r2', '已经配对的不覆盖，那可能是用户特意挑的另一条参考');
+	assert.deepEqual(pairAllUnpaired(picks, pages, ''), [], '没给参考就不动');
 });
