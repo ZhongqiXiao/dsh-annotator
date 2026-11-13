@@ -8,6 +8,7 @@ import {
 	isResend,
 	MAX_REFERENCE_PAGES,
 	normalizeSpec,
+	pageHudInfo,
 	pageKeyOf,
 	pageRoleOf,
 	pairAllUnpaired,
@@ -139,6 +140,37 @@ test('deleting a pick clears pairIds that pointed at it', () => {
 	assert.equal(picks[0].pairId, null, '指向被删参考的目标要解开，别留悬空 id');
 	assert.equal(picks[1].pairId, 'r2', '别的配对不受影响');
 	assert.deepEqual(clearPairTo(picks, ''), picks, '空 id 不动任何东西');
+});
+
+test('pageHudInfo answers for the tab it is pushed into, not for the active page', () => {
+	const target = url('/page');
+	const reference = url('/ref');
+	const pages = setPageRole(setPageRole([], { url: target, title: '列表页', role: 'target' }).pages, {
+		url: reference,
+		title: '设计稿',
+		role: 'reference',
+	}).pages;
+	const picks = [
+		{ id: 't1', role: 'target', pageKey: pageKeyOf(target) },
+		{ id: 'r1', role: 'reference', pageKey: pageKeyOf(reference) },
+		{ id: 'r2', role: 'reference', pageKey: pageKeyOf(reference) },
+	];
+	const ref = pageHudInfo({ url: reference, pages, picks, mode: 'pick', specs: ['布局'] });
+	assert.equal(ref.role, 'reference', '后台那个参考页也要拿到「参考」角色，否则 HUD 会说「怎么改」');
+	assert.equal(ref.refLabel, 'R1');
+	assert.equal(ref.count, 2, '计数只算这一页的标注');
+	assert.deepEqual(ref.specs, ['布局']);
+	assert.equal(ref.mode, 'pick');
+
+	const own = pageHudInfo({ url: target, pages, picks, mode: 'off' });
+	assert.equal(own.role, 'target');
+	assert.equal(own.refLabel, '');
+	assert.equal(own.count, 1);
+
+	// 还没分类的页面按「要改这里」算，和 pickRoleOf 的默认一致。
+	const unknown = pageHudInfo({ url: url('/elsewhere'), pages, picks, mode: 'off' });
+	assert.equal(unknown.role, 'target');
+	assert.equal(unknown.count, 0);
 });
 
 test('pairAllUnpaired spreads one reference over the targets still unpaired', () => {
