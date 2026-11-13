@@ -44,6 +44,7 @@
 		"gate:live": "node scripts/gate-doctor.mjs --live",
 		"gate:apply": "node scripts/gate-doctor.mjs --apply",
 		"canary": "node scripts/canary-gates.mjs",
+		"setup:hooks": "git config core.hooksPath .githooks",
 		"assess": "node scripts/assess-ai-native.mjs",
 		"assess:gate": "node scripts/assess-ai-native.mjs --min-score 80",
 		"mutate": "node scripts/mutation-test.mjs",

@@ -24,7 +24,7 @@
 
 ## 安装
 
-同一个包，桌面端与 Web 端都能装，区别只在装进哪个 profile：Desktop 用 `--profile desktop`，Web 用 `--profile web`（`dsh web` 等价于 `dsh --profile web`）。
+同一个包，桌面端与 Web 端都能装。`--profile` 填的不是随意的名字，而是 DeepSeek Harness 两种客户端形态各自对应的 profile：桌面 App 固定用 `desktop`（该 profile 由 Desktop 应用管理），浏览器端固定用 `web`（`dsh web` 等价于 `dsh --profile web`）。`ls ~/.dsh/profiles/` 下可能还会看到 `headless`、`tui` 等其他 profile——那是命令行形态，没有图形面板，装进去也看不见本插件。
 
 ### 方式 A：插件市场（图形界面）
 
@@ -74,7 +74,7 @@ dsh web
 
 重启 DSH 生效：Desktop 退出后重新打开；Web 端重新跑一次 `dsh web`。GUI 右侧边栏出现「元素标注」面板即安装成功；后续升级只需更新包再重启，面板会自动加载新版。
 
-卸载与更新走同一套入口：侧栏「插件」页里可停用、更新、卸载，命令行则用 `dsh plugin --profile desktop remove dsh-annotator`。
+卸载与更新走同一套入口：侧栏「插件」页里可停用、更新、卸载，命令行则用 `dsh plugin --profile desktop remove dsh-annotator`（Web 端把 `desktop` 换成 `web`，装进哪个 profile 就从哪个卸）。
 
 ## 使用流程
 

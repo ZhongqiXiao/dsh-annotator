@@ -1,0 +1,5 @@
+#!/bin/sh
+# AI-Native 成熟度地板分闸：低于 80 分拒绝提交；--detail 把逐项明细直接打到终端，
+# 提交时就能看到「跑了什么、哪些过哪些挂」，不依赖事后翻报告文档。
+# 启用（每个克隆一次）：npm run setup:hooks
+npm run --silent assess:gate -- --detail
