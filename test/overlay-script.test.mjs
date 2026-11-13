@@ -33,10 +33,12 @@ test('overlay v3 reports mode changes and exposes the host sync channel', () => 
 });
 
 // badge 升级成了可交互 HUD：pick 模式是控制台，off 模式是右下角折叠胶囊（可重开）。
+// v13 起 HUD 里另有「参考 R1」角色徽标，但它只是角色提示，交互仍在控制台/胶囊上。
 test('overlay renders an interactive HUD instead of a display-only badge', () => {
 	assert.ok(OVERLAY_SCRIPT.includes('class="cluster"'));
 	assert.ok(OVERLAY_SCRIPT.includes('class="pill"'));
-	assert.ok(!OVERLAY_SCRIPT.includes('.badge{'));
+	assert.ok(OVERLAY_SCRIPT.includes('<span class="badge"></span>'));
+	assert.ok(OVERLAY_SCRIPT.includes('nodes.badges[i].textContent'), '角色徽标由 renderRole() 驱动');
 });
 
 // 回归：.hud 容器在 CSS 里是 display:none 的初始态，若 render() 不打开它，
