@@ -132,7 +132,7 @@ test('delegationSummary is deterministic and names the reference pages and dimen
 	const withTargetPick = refsOnly.concat([{ id: 't1', role: 'target', pageKey: pageKeyOf(url('/page')) }]);
 	assert.equal(
 		delegationSummary({ pages: withTarget, picks: withTargetPick }),
-		'参考 R1 的布局、配色，在目标页「列表页」上调整。',
+		'参照 R1 的布局、配色，在目标页「列表页」上调整。',
 	);
 	assert.equal(delegationSummary({ pages, picks: refsOnly }), '按 R1 的布局、配色新建页面。');
 	assert.equal(delegationSummary({ pages: withTarget, picks: [] }), '');
