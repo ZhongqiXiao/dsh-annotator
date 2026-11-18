@@ -165,3 +165,14 @@ test('两栏卡片同高、说明单行省略、底部按钮贴底对齐', () =>
 	);
 	assert.ok(CLIENT.includes('align-items:stretch'), '两列等高');
 });
+
+// 批量勾选按需出现（用户反馈：两栏常驻几十个空勾选框是噪音，批量清空才是低频操作）。
+// 布局契约（用户拍板）：按钮统一放底部操作行、清空左边，文案「批量操作」，栏头不放。
+test('勾选框默认不渲染，点底部「批量操作」才出现', () => {
+	assert.ok(CLIENT.includes('var [selectMode, setSelectMode] = useState(false)'), '批量勾选必须是显式模式状态');
+	assert.ok(CLIENT.includes("'vp-btn' + (selectMode ? ' on' : '')"), '底部按钮统管批量开关，开着时高亮提示');
+	assert.ok(CLIENT.includes("'批量操作',"), '按钮文案是「批量操作」');
+	assert.ok(!CLIENT.includes('vp-chead-batch'), '栏头不再放批量开关（统一到底部）');
+	assert.ok(CLIENT.includes('selectMode && selectedIds.length'), '选中条仅在批量模式下才出现');
+	assert.ok(CLIENT.includes('if (selectMode) setSelected([]);'), '退出批量必须清掉已勾选，不留隐藏状态');
+});
