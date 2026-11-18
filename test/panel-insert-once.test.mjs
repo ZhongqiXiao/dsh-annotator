@@ -260,6 +260,79 @@ test('one Ctrl+Enter inserts once even when the panel is mounted twice', async (
 	assert.equal(draft.split(HEADER).length - 1, 1, 'expected one insertion, draft was:\n' + draft);
 });
 
+test('reference draft numbers refs over the full list, not the insert subset', async () => {
+	const harness = makeHarness();
+	// 复现编号错位的场景：页 B 上有一条已引用过（referencedAt 置位、不再重发）的旧参照 p1，
+	// 新参照 p2 配给页 A 的改动 p3。插入列表 = [p3, p2]（p1 被 keepRefs 挤掉）。
+	// p2 的编号必须按「全部参照」算（R1-2），不能在插入子集里从 1 重数成 R1-1——
+	// 那会跟 host 工具侧（annotationMarkdown 按全量编号）看到的两套编号对不上。
+	harness.state = {
+		mode: 'pick',
+		arming: { slot: 'reference' },
+		picks: [
+			{
+				id: 'p1',
+				role: 'reference',
+				pageKey: 'https://b/1',
+				url: 'https://b/1',
+				refLabel: 'R1',
+				referencedAt: 1,
+				included: false,
+				comment: '旧参照',
+			},
+			{ id: 'p2', role: 'reference', pageKey: 'https://b/1', url: 'https://b/1', refLabel: 'R1', comment: '新参照' },
+			{ id: 'p3', role: 'target', pageKey: 'https://a/1', url: 'https://a/1', comment: '改动', pairIds: ['p2'] },
+		],
+	};
+	const runtime = createRuntime();
+	const { keydown } = await mounts(harness, runtime, 1);
+	await fireKeydown(harness, keydown(), { key: 'Enter', ctrlKey: true, preventDefault() {}, target: null });
+	const draft = harness.composer.read();
+	assert.ok(draft.length > 0, 'expected an insertion, draft was empty');
+	assert.ok(draft.includes('[标注 #p2]'), 'draft must carry the new reference, draft:\n' + draft);
+	assert.ok(draft.includes('R1-2'), 'new ref must be numbered R1-2 (full-list basis), draft:\n' + draft);
+	assert.ok(!draft.includes('R1-1'), 'must not collide with the consumed old ref R1-1, draft:\n' + draft);
+});
+
+test('every target keeps its reference rows when one ref is shared by several targets', async () => {
+	const harness = makeHarness();
+	// 共享参照：两个改动 p2/p3 都参照同一条 p1。草稿里两处改动都要带出 R1-1，
+	// 不能只挂在第一处（chips 路径的 claimed 去重曾把后面几处的参照行整行吞掉）。
+	harness.state = {
+		mode: 'pick',
+		arming: { slot: 'reference' },
+		picks: [
+			{ id: 'p1', role: 'reference', pageKey: 'https://b/1', url: 'https://b/1', refLabel: 'R1', comment: '参照' },
+			{ id: 'p2', role: 'target', pageKey: 'https://a/1', url: 'https://a/1', comment: '改动一', pairIds: ['p1'] },
+			{ id: 'p3', role: 'target', pageKey: 'https://a/1', url: 'https://a/1', comment: '改动二', pairIds: ['p1'] },
+		],
+	};
+	const runtime = createRuntime();
+	const { keydown } = await mounts(harness, runtime, 1);
+	await fireKeydown(harness, keydown(), { key: 'Enter', ctrlKey: true, preventDefault() {}, target: null });
+	const draft = harness.composer.read();
+	assert.ok(draft.includes('对照 1'), 'first target must be numbered, draft:\n' + draft);
+	assert.ok(draft.includes('对照 2'), 'second target must be numbered, draft:\n' + draft);
+	assert.ok(draft.split('R1-1').length - 1 >= 2, 'both targets must reference R1-1, draft:\n' + draft);
+	assert.ok(draft.includes('[标注 #p2]') && draft.includes('[标注 #p3]'), 'both targets inserted, draft:\n' + draft);
+});
+
+test('chips path numbers targets by id and keeps shared refs visible (source contract)', () => {
+	// Bug1「改动 0」：withComment 是浅拷贝，indexOf 比对象引用永远不中。插入前缀编号必须按 id 查表
+	// （渲染层的 targets.indexOf 作用在原始 picks 对象上，引用成立，不算此列）。
+	assert.ok(
+		!SOURCE.includes("'改动 ' + (targets.indexOf(pick) + 1)"),
+		'insert prefix numbering must not rely on indexOf object identity',
+	);
+	assert.ok(SOURCE.includes('targetSeq['), 'numbering must come from an id-keyed table');
+	// Bug2 共享参照：首次出现插 chip，后续改动补「同改动 N」回指行（pick 为 null 的纯文本项）。
+	assert.ok(SOURCE.includes('同改动 '), 'shared refs must point back to the first target');
+	assert.ok(SOURCE.includes('pick: null'), 'shared-ref backpointer items must be text-only');
+	// 插入与校验都要认得纯文本行：跳过 chip，按 chip 项数而不是 seq.length 校验。
+	assert.ok(SOURCE.includes('if (!pick) continue;'), 'insertViaChips must skip text-only items');
+	assert.ok(!SOURCE.includes('chipCount >= seq.length'), 'chip verification must count chip items only');
+});
+
 test('two separate Ctrl+Enter presses are not merged into one', async () => {
 	const harness = makeHarness();
 	const runtime = createRuntime();
@@ -277,4 +350,65 @@ test('two separate Ctrl+Enter presses are not merged into one', async () => {
 
 	const draft = harness.composer.read();
 	assert.equal(draft.split(HEADER).length - 1, 2, 'two presses must insert two blocks, draft was:\n' + draft);
+});
+
+test('pair view checkboxes stay hidden until the 批量操作 toggle shows them', async () => {
+	const harness = makeHarness();
+	harness.state = {
+		mode: 'pick',
+		arming: { slot: 'reference' },
+		// pairView 只在有已打开页面时渲染两栏（否则显示「先打开浏览器」），注入两页。
+		pages: [
+			{ key: 'https://a/1', title: 'A', url: 'https://a/1' },
+			{ key: 'https://b/1', title: 'B', url: 'https://b/1' },
+		],
+		picks: [
+			{ id: 'p1', role: 'target', pageKey: 'https://a/1', url: 'https://a/1', comment: '改动', pairIds: [] },
+			{ id: 'p2', role: 'reference', pageKey: 'https://b/1', url: 'https://b/1', refLabel: 'R1', comment: '参照' },
+		],
+	};
+	const runtime = createRuntime();
+	const { list } = await mounts(harness, runtime, 1);
+
+	// vdom 树遍历：只找节点，不碰字符串叶子。
+	const collect = (node, pred, out = []) => {
+		if (!node || typeof node !== 'object') return out;
+		if (pred(node)) out.push(node);
+		for (const child of node.children || []) collect(child, pred, out);
+		return out;
+	};
+	const classNameStartsWith = (prefix) => (n) =>
+		typeof n.props?.className === 'string' && n.props.className.startsWith(prefix);
+	const checks = (tree) => collect(tree, classNameStartsWith('vp-check'));
+	const batchBtns = (tree) => collect(tree, (n) => Array.isArray(n.children) && n.children.includes('批量操作'));
+	const selbars = (tree) => collect(tree, (n) => n.props?.className === 'vp-selbar');
+
+	let tree = await list[0].render();
+	assert.equal(checks(tree).length, 0, 'checkboxes must stay hidden by default');
+	assert.equal(selbars(tree).length, 0, 'selection bar must stay hidden by default');
+
+	const btns = batchBtns(tree);
+	assert.equal(btns.length, 1, 'footer carries exactly one 批量操作 toggle');
+	// 位置契约（用户拍板）：批量操作在底部操作行、清空按钮左边。
+	const ctaRow = collect(tree, (n) => n.props?.className === 'vp-cta-row')[0];
+	const order = (ctaRow.children || []).map((child) => (child.children && child.children[0]) || '');
+	assert.ok(order.indexOf('批量操作') >= 0, '批量操作 button is in the footer action row');
+	assert.ok(order.indexOf('清空') > order.indexOf('批量操作'), '批量操作 must sit left of 清空');
+	btns[0].props.onClick({ stopPropagation() {} });
+	tree = await list[0].render();
+	assert.equal(checks(tree).length, 2, 'one checkbox per pick after enabling batch mode');
+
+	checks(tree)[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
+	tree = await list[0].render();
+	assert.equal(selbars(tree).length, 1, 'selection bar appears once something is checked');
+	assert.equal(
+		collect(tree, (n) => Array.isArray(n.children) && n.children.includes('已选 1 条')).length,
+		1,
+		'bar must count exactly one selected pick',
+	);
+
+	batchBtns(tree)[0].props.onClick({ stopPropagation() {} });
+	tree = await list[0].render();
+	assert.equal(checks(tree).length, 0, 'checkboxes gone after leaving batch mode');
+	assert.equal(selbars(tree).length, 0, 'selection bar gone after leaving batch mode');
 });
