@@ -5,7 +5,9 @@
 // 再由这个脚本做三件事：
 //   node scripts/gate-doctor.mjs          静态体检（离线，进 npm run verify 与 CI）：
 //                                         必需检查名必须真的存在于某个 workflow 的 job name，且该 workflow 必须在
-//                                         pull_request 上触发（否则 PR 永远等不到这个 context）；开关语义必须正确。
+//                                         pull_request 上触发（否则 PR 永远等不到这个 context）；调用可复用工作流的
+//                                         job 上报的名字是「<调用 job 名> / <被调 workflow 的 job 名>」（2026-11-19 PR #28
+//                                         实测），只写调用 job 名同样永远等不到；开关语义必须正确。
 //   node scripts/gate-doctor.mjs --live   对比线上分支保护与声明（需要 gh 且是仓库管理员）。
 //   node scripts/gate-doctor.mjs --apply  把声明写进线上分支保护（幂等）。
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -39,40 +41,73 @@ const readGate = () => {
 	}
 };
 
-// 极简 workflow 解析：只要「job 显示名」与「是否在 pull_request 触发」两件事。
+// 极简 workflow 解析：只要「job 显示名 / 调用了哪个可复用工作流 / 是否在 pull_request 触发」三件事。
 // 不引 YAML 依赖（本仓只用 node: 内置模块），用行级扫描就够——写错缩进的话
 // GitHub 自己会红，这里只防「改名 / 换触发器」这类静默失效。
+const unquote = (v) =>
+	String(v)
+		.trim()
+		.replace(/^['"]|['"]$/g, '')
+		.trim();
+
+/** `uses: ./.github/workflows/x.yml` → x.yml（远程可复用工作流的 context 名另有规则，本仓不用） */
+const LOCAL_REUSABLE = /^\.\/\.github\/workflows\/([\w.-]+)$/;
+
 const parseWorkflow = (file) => {
 	const text = readFileSync(file, 'utf8');
-	const jobNames = [];
+	const jobs = [];
 	// YAML 行内注释陷阱：值未加引号时 ` #` 之后被解析器当注释吃掉，job 显示名随之截断，
 	// 必需 context 永远等不到（2026-11-12 PR #12 实锤）。行级扫描必须按解析后的真实名字算。
 	const commentTraps = [];
 	let inJobs = false;
+	let current = null;
+	let jobIndent = null;
 	for (const raw of text.split(/\r?\n/)) {
 		const line = raw.replace(/\t/g, '  ');
 		if (!line.trim() || line.trim().startsWith('#')) continue;
 		const indent = line.length - line.trimStart().length;
+		const value = line.trim();
 		if (indent === 0) {
-			inJobs = /^jobs:\s*$/.test(line.trim());
+			inJobs = /^jobs:\s*$/.test(value);
+			current = null;
+			jobIndent = null;
 			continue;
 		}
 		if (!inJobs) continue;
-		// 步骤的 `- name:` 以 "- " 开头，不是 job 名
-		const m = line.trim().match(/^name:\s*(.+)$/);
-		if (!m) continue;
-		const value = m[1].trim();
-		const quoted = /^(['"]).*\1$/.test(value);
-		if (!quoted && /\s#/.test(value)) {
-			commentTraps.push(value);
-			jobNames.push(value.replace(/\s#.*$/, '').trim());
-		} else {
-			jobNames.push(value.replace(/^['"]|['"]$/g, '').trim());
+		if (jobIndent === null) jobIndent = indent;
+		// job id 行（`verify:` / `e2e-linux:`）：新 job 开始
+		if (indent === jobIndent) {
+			current = { id: value.replace(/:.*$/, '').trim(), name: null, uses: null };
+			jobs.push(current);
+			const inline = value.match(/^[\w-]+:\s*\{(.*)\}$/);
+			if (inline) {
+				const nm = inline[1].match(/name:\s*([^,}]+)/);
+				if (nm) current.name = unquote(nm[1]);
+				const us = inline[1].match(/uses:\s*([^,}]+)/);
+				if (us) current.uses = unquote(us[1]);
+			}
+			continue;
 		}
+		// 只认 job 自己的键（job id 缩进 + 2）；步骤里的 `- name:` / `uses:` 不算
+		if (!current || indent !== jobIndent + 2) continue;
+		const nameMatch = value.match(/^name:\s*(.+)$/);
+		if (nameMatch) {
+			const raw2 = nameMatch[1].trim();
+			const quoted = /^(['"]).*\1$/.test(raw2);
+			if (!quoted && /\s#/.test(raw2)) {
+				commentTraps.push(raw2);
+				current.name = raw2.replace(/\s#.*$/, '').trim();
+			} else {
+				current.name = unquote(raw2);
+			}
+			continue;
+		}
+		const usesMatch = value.match(/^uses:\s*(.+)$/);
+		if (usesMatch) current.uses = unquote(usesMatch[1]);
 	}
 	return {
 		file: path.relative(ROOT, file),
-		jobNames,
+		jobs,
 		commentTraps,
 		onPullRequest: /pull_request/.test(text),
 	};
@@ -86,6 +121,41 @@ const workflows = existsSync(WORKFLOW_DIR)
 			.map((f) => parseWorkflow(path.join(WORKFLOW_DIR, f)))
 	: [];
 if (!workflows.length) bad('.github/workflows/ 下没有任何 workflow', '闸门必需检查至少要有 job 去上报');
+
+// 上报名解析：普通 job 上报自己的显示名（没写 name 就用 job id）；调用可复用工作流的 job
+// 上报的是「<调用 job 名> / <被调 workflow 里 job 的显示名>」——实测 2026-11-19 PR #28，
+// required 写 'Browser e2e (Linux)' 时 GitHub 上报 'Browser e2e (Linux) / E2E'，旧版只比对
+// job name 的体检器看不出差别，上闸当天就会把所有 PR 锁死（幽灵 context）。
+const byFile = new Map(workflows.map((w) => [path.basename(w.file), w]));
+for (const w of workflows) {
+	const reported = new Set();
+	const callers = new Set();
+	const missingCallees = [];
+	for (const job of w.jobs) {
+		const label = job.name || job.id;
+		const calleeName = job.uses ? (job.uses.match(LOCAL_REUSABLE) || [])[1] : null;
+		if (!calleeName) {
+			reported.add(label);
+			continue;
+		}
+		callers.add(label);
+		const callee = byFile.get(calleeName);
+		if (!callee) {
+			missingCallees.push(label + ' → .github/workflows/' + calleeName);
+			continue;
+		}
+		for (const cj of callee.jobs) reported.add(label + ' / ' + (cj.name || cj.id));
+	}
+	w.reported = reported;
+	w.callers = callers;
+	w.missingCallees = missingCallees;
+	for (const m of missingCallees) {
+		bad(
+			'job 「' + m + '」调用的可复用工作流不存在',
+			'路径写错或文件被删：GitHub 找不到被调 workflow 时整条 job 不跑，必需 context 永远等不到',
+		);
+	}
+}
 
 // job name 里未加引号的 ` #` = 行内注释截断：必需检查名永远上报不上来（幽灵检查卡死所有 PR）。
 for (const w of workflows) {
@@ -103,14 +173,23 @@ if (gate) {
 	if (!Array.isArray(gate.requiredChecks) || gate.requiredChecks.length === 0) {
 		bad('requiredChecks 为空', '没有必需检查的分支保护等于「谁都能合」，把 Verify / e2e 等写进去');
 	}
-	// 每个必需检查都必须能在某条 workflow 的 job name 里找到，且那条 workflow 在 PR 上触发。
+	// 每个必需检查都必须能在某条 workflow 上报的 context 名里找到，且那条 workflow 在 PR 上触发。
 	// 少一个 = 该 context 永远不上报 = 所有 PR 永久卡在「Waiting for status to be reported」。
 	for (const check of gate.requiredChecks || []) {
-		const owner = workflows.find((w) => w.jobNames.includes(check));
+		const owner = workflows.find((w) => w.reported.has(check));
 		if (!owner) {
+			const asCaller = workflows.find((w) => w.callers.has(check));
 			bad(
-				'必需检查「' + check + '」在任何 workflow 的 job 显示名里都找不到',
-				'job 被改名了，分支保护却在等旧名字 → 所有 PR 永久合不进去。改回 job name，或同步改 gate/branch-protection.json',
+				'必需检查「' + check + '」在任何 workflow 的 job 上报名里都找不到',
+				asCaller
+					? '「' +
+							check +
+							'」是调用可复用工作流的 job（' +
+							asCaller.file +
+							'），它上报的 context 是「' +
+							check +
+							' / <被调 workflow 的 job 名>」，不是调用 job 自己的名字。把 gate/branch-protection.json 里这条改成组合名（看 PR 的 checks 列表里真实上报的那条）'
+					: 'job 被改名了，分支保护却在等旧名字 → 所有 PR 永久合不进去。改回 job name，或同步改 gate/branch-protection.json',
 			);
 			continue;
 		}

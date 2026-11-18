@@ -292,6 +292,70 @@ ${nameLine}
 		DSH_VA_GATE_ROOT: gateOkRoot,
 	});
 
+	// --- gate-doctor: 可复用工作流的 context 名是「<调用 job 名> / <被调 job 名>」---
+	// 2026-11-19 PR #28 实测：required 写 'Browser e2e (Linux)'，GitHub 实际只上报
+	// 'Browser e2e (Linux) / E2E'。旧体检器只比对 job name，看不出差别；按旧写法上闸，
+	// 上闸当天所有 PR 就永久卡在「Waiting for status to be reported」。双向探针防退化。
+	const gateCallerFixture = (root, combined) => {
+		mkdirSync(path.join(root, 'gate'), { recursive: true });
+		mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
+		writeFileSync(
+			path.join(root, 'gate', 'branch-protection.json'),
+			JSON.stringify(
+				{
+					branch: 'main',
+					strict: true,
+					enforceAdmins: true,
+					requiredApprovals: 0,
+					allowForcePushes: false,
+					allowDeletions: false,
+					requiredChecks: [combined ? 'E2E Linux / E2E' : 'E2E Linux'],
+				},
+				null,
+				'\t',
+			),
+		);
+		writeFileSync(
+			path.join(root, '.github', 'workflows', 'ci.yml'),
+			`name: CI
+on:
+  pull_request:
+jobs:
+  e2e-linux:
+    name: "E2E Linux"
+    uses: ./.github/workflows/reusable.yml
+`,
+		);
+		writeFileSync(
+			path.join(root, '.github', 'workflows', 'reusable.yml'),
+			`name: Reusable E2E
+on:
+  workflow_call:
+jobs:
+  e2e:
+    name: "E2E"
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`,
+		);
+		writeFileSync(path.join(root, '.github', 'PULL_REQUEST_TEMPLATE.md'), '# PR\n\nResolves #N\n');
+	};
+	const gateCallerBadRoot = path.join(tempRoot, 'gate-caller-bad');
+	gateCallerFixture(gateCallerBadRoot, false);
+	fail(
+		'gate-doctor rejects a caller job name without the callee suffix',
+		process.execPath,
+		[script('gate-doctor.mjs')],
+		'组合名|调用可复用工作流',
+		{ DSH_VA_GATE_ROOT: gateCallerBadRoot },
+	);
+	const gateCallerOkRoot = path.join(tempRoot, 'gate-caller-ok');
+	gateCallerFixture(gateCallerOkRoot, true);
+	pass('gate-doctor accepts the combined caller/callee check name', process.execPath, [script('gate-doctor.mjs')], {
+		DSH_VA_GATE_ROOT: gateCallerOkRoot,
+	});
+
 	// ============ 评分器自证：它自己不许是「永远 exit 0」 ============
 
 	// 评分器自证：默认始终执行。只在第二层嵌套（canary→评分器→canary）时停下，

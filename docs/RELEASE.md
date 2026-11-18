@@ -29,7 +29,7 @@ git commit -m "chore(release): v0.5.4"
 git push -u origin chore/release-0.5.4
 gh pr create --title "chore(release): v0.5.4" \
   --body "发版提交：版本号 + CHANGELOG。无关联 issue（发版不关 issue）。"
-gh pr checks --watch          # 等四个必需检查全绿（Verify / Scorer mutation test / Browser e2e / Plugin manifest）
+gh pr checks --watch          # 等九个必需检查全绿（Verify / Mutation / Unit tests ×2 / Browser e2e ×3（Linux·Windows·macOS）/ Plugin manifest / PR contract）
 gh pr merge --squash --delete-branch
 git checkout main && git pull --ff-only
 

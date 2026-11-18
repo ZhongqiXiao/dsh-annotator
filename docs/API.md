@@ -78,7 +78,7 @@
 - `/close { terminate: true }` 才会 `Browser.close` 关窗；profile 不删。若当时没有活动 socket，会重连 `DevToolsActivePort` 再关，避免窗口留在桌面上关不掉；
 - `DevToolsActivePort` 失效或实例已退出时回落：重新 spawn 同一个 profile。
 
-**ego lite 是唯一会自动接管已运行实例的浏览器。** 它的 CDP 端口随机分配且没有端口文件，host 侧用 `pgrep -fl 'ego lite'` 找主进程（排除 `--type=` 子进程与自己的 pid），再用 `lsof -nP -F -iTCP -sTCP:LISTEN` 的整表输出取端口（宿主沙箱里 `ps`、`lsof -p <pid>` 会被拒，整表可以），逐个尝试 `/json/version` 接管；成功时 `/state.reused` 与 `resumed` 为 `true`、host 不持有进程，`/close { terminate: true }` 也只断开。接管后会把当前空间切到/新建名为 `agent 空间` 的 BrowserContext（`/state.spaceName`），并关掉 `chrome://onboarding/` 引导窗口。设 `DSH_VISUAL_ANNOTATOR_ADOPT_RUNNING=0` 关闭这条自动接管。
+**ego lite 是唯一会自动接管已运行实例的浏览器。** 它的 CDP 端口随机分配且没有端口文件，host 侧用 `pgrep -fl 'ego lite'` 找主进程（排除 `--type=` 子进程与自己的 pid），再用 `lsof -nP -F -iTCP -sTCP:LISTEN` 的整表输出取端口（宿主沙箱里 `ps`、`lsof -p <pid>` 会被拒，整表可以），逐个尝试 `/json/version` 接管；成功时 `/state.reused` 与 `resumed` 为 `true`、host 不持有进程，`/close { terminate: true }` 也只断开。接管后会把当前空间切到/新建名为 `agent 空间` 的 BrowserContext（`/state.spaceName`）。自己起 ego 时，spawn 之前会往 profile 的 `ego_config.json` 写 `not_first_run: true`——ego 只在启动那一瞬读它，写进去就不会弹「欢迎使用 ego(𝘭𝘪𝘵𝘦)」整窗引导；**不要改回用 `Target.closeTarget` 关那扇窗**：0.6.3.14 上关它会连带退出整个浏览器进程（另开 page 并激活也一样），于是每次启动都在「弹欢迎 → 关 → 进程没了 → 重开」里循环。设 `DSH_VISUAL_ANNOTATOR_ADOPT_RUNNING=0` 关闭这条自动接管。
 
 **Chrome / Edge 的外部连接是显式选项，不是默认行为。** 只有设了 `DSH_VISUAL_ANNOTATOR_CDP_URL`（可写 `host:port`，自动补 `http://`）才会去连它：`GET <base>/json/version`，只接受指向 `/devtools/browser/` 的 ws 端点（归一化与解析在 `lib/shared/cdp-endpoint.js` 纯函数里，已覆盖单测）。默认不探测任何常见端口——回环 9222 上很可能正是用户的日常 Chrome。连上外部实例后不创建 profile、不 spawn，`/state.reused` 为 `true`；`/close` 同样只断开，不会去关别人的窗口。
 

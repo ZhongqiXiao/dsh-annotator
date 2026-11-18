@@ -9,7 +9,11 @@
 	"requiredChecks": [
 		"Verify (check, lint, format, tests, gates, canary)",
 		"Scorer mutation test (评分器的评分器)",
-		"Browser e2e",
+		"Unit tests (Windows)",
+		"Unit tests (macOS)",
+		"Browser e2e (Linux) / E2E",
+		"Browser e2e (Windows) / E2E",
+		"Browser e2e (macOS) / E2E",
 		"Plugin manifest integrity",
 		"PR contract (Resolves #N)"
 	]

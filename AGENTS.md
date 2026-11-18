@@ -35,7 +35,7 @@ npm run gates    # 三道物理门禁：build-sync 三契约 / embedded-runtime 
 npm run gate:doctor # 只体检合入闸门（离线）：必需检查名必须真的存在且由 PR 触发
 npm run gate:live   # 线上分支保护 vs gate/branch-protection.json 逐项对比（需要 gh 管理员）
 npm run gate:apply  # 把 gate/branch-protection.json 写进线上分支保护（幂等，别去网页手点）
-npm run canary   # canary 演练（双向对照 14 场景）：阳性=违规必须拦、阴性=干净必须放行、CI 浅克隆必须红、gate-doctor 双向探针、评分器自证
+npm run canary   # canary 演练（双向对照 16 场景）：阳性=违规必须拦、阴性=干净必须放行、CI 浅克隆必须红、gate-doctor 双向探针、评分器自证
 npm run setup:hooks # 启用 pre-commit（每个克隆一次）：提交前自动跑 AI-Native 评分地板分并把逐项明细打到终端，低于 80 拒绝提交
 npm run assess   # AI-Native 成熟度评分（--write-docs 写入 docs/ai-native-health-report.md）
 npm run assess:gate # 评分地板分（--min-score 80）：低于地板分 exit 1，CI 强制——评分器不许自己永远 exit 0
@@ -43,7 +43,7 @@ npm run mutate   # 评分器的评分器：克隆本仓打坏 16 个控制项，
 npm run format   # prettier 全量格式化
 npm run lint:fix # eslint 自动修复
 npm test         # 只跑单元测试
-npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪个浏览器就跑哪个
+npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪个浏览器就跑哪个；CI 用 E2E_REQUIRE=chrome,edge 要求两个都必须有
 ```
 
 ## 代码规范
@@ -55,7 +55,7 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 ## AI-Native 门禁与自动化闭环
 
 - **物理拦截优先于文档约定**：「写在这但没人查」的约束必然翻车。本仓把最容易翻车的两类契约（三版本标记、注入脚本运行时）做成了物理门禁（`scripts/check-build-sync.mjs`、`scripts/check-embedded-runtime.mjs`），CI 与收尾钩子都会跑。
-- **canary 双向自证**：`npm run canary` 共 14 场景，假门禁的几种死法各配探针——永远 exit 0 的门禁（阳性 8：版本 skew、process 泄漏、载荷 require、漏递增的 client/载荷、浅克隆 + CI、job name 未加引号的 YAML 行内注释陷阱，注入违规必须真判失败）；永远 exit 1 的门禁（阴性 6：干净夹具 ×2、同提交递增、浅克隆本地放行、加引号的 job name 夹具放行，必须全部放行）；CI 假绿路径（浅克隆 + CI 环境必须直接红，堵死「警告放行」）；永远 exit 0 的评分器（自证 2：`--min-score 101` 必须红、0 必须绿）。任何一类失效，canary 都会红。其中 YAML 行内注释陷阱探针对应 gate-doctor 的新检测：`name:` 值未加引号时 ` #` 之后会被解析器当注释吃掉，必需检查名永远上报不上来（2026-11-12 PR #12 幽灵检查事故）。
+- **canary 双向自证**：`npm run canary` 共 16 场景，假门禁的几种死法各配探针——永远 exit 0 的门禁（阳性 9：版本 skew、process 泄漏、载荷 require、漏递增的 client/载荷、浅克隆 + CI、job name 未加引号的 YAML 行内注释陷阱、可复用工作流的检查名漏掉「/ 被调 job 名」后缀，注入违规必须真判失败）；永远 exit 1 的门禁（阴性 7：干净夹具 ×2、同提交递增、浅克隆本地放行、加引号的 job name 夹具放行、组合检查名夹具放行，必须全部放行）；CI 假绿路径（浅克隆 + CI 环境必须直接红，堵死「警告放行」）；永远 exit 0 的评分器（自证 2：`--min-score 101` 必须红、0 必须绿）。任何一类失效，canary 都会红。其中 YAML 行内注释陷阱探针对应 gate-doctor 的新检测：`name:` 值未加引号时 ` #` 之后会被解析器当注释吃掉，必需检查名永远上报不上来（2026-11-12 PR #12 幽灵检查事故）；组合名探针对应 gate-doctor 的第二类幽灵检查——调用可复用工作流的 job 上报的是「<调用 job 名> / <被调 workflow 的 job 名>」，声明里只写调用 job 名同样永远等不到（2026-11-19 PR #28 踩中，体检器当场拦下，否则上闸即锁死所有 PR）。
 - **收尾钩子**：agent 会话收尾前自动执行 `npm run verify`（`hooks/verify-before-finish.mjs`，注册于 `.claude/settings.json` 的 Stop hook），未全绿会被拦下并给出对号入座的修复指南。
 - **issue → 修复 → 验证闭环**：bug 模板（`.github/ISSUE_TEMPLATE/bug.md`）要求验收标准写成可执行断言（这是自动验证契约）。`ai-fix` 标签 = agent-ready 契约 + 派单触发，两条领取路径：
   - **自动派单**：打上 `ai-fix` 标签后，`.github/workflows/ai-fix-dispatch.yml` 把 issue 指派给 GitHub Copilot coding agent，由它开分支、开 Draft PR；首个 PR 需人工批准一次，之后 CI verify 自动验证。一次性配置见 [docs/AI-FIX.md](docs/AI-FIX.md)。
@@ -69,9 +69,11 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 2026-11-11 的教训：issue #4 被手动关闭了，但 main 上的 Browser e2e 其实是红的——「关 issue」不等于「验证过」。现在这条路在服务端被物理堵住：
 
 - **main 只能通过 PR 合入**：分支保护开了 `enforce_admins: true`，直推与强制推送一律被拒，管理员也不例外。
-- **五个必需检查全绿才允许合并**：`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Browser e2e`、`Plugin manifest integrity`、`PR contract (Resolves #N)`；且 `strict: true`，分支落后 main 要先同步再重跑。
+- **九个必需检查全绿才允许合并**：`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Unit tests (Windows)`、`Unit tests (macOS)`、`Browser e2e (Linux) / E2E`、`Browser e2e (Windows) / E2E`、`Browser e2e (macOS) / E2E`、`Plugin manifest integrity`、`PR contract (Resolves #N)`；且 `strict: true`，分支落后 main 要先同步再重跑。
+- **跨平台覆盖是「真跑」而不是「配了就算」**：Linux 跑完整门径（check/lint/format/gates/canary 依赖 POSIX 工具链，塞进 Windows 只会把平台差异混进代码问题）；Windows / macOS 各跑一遍单元测试，再各起一台真浏览器跑 e2e，且 `DSH_VISUAL_ANNOTATOR_E2E_REQUIRE=chrome,edge` 断言 **Chrome 与 Edge 都真的被找到并跑过**——没装成不会静默降级成「只测了 Chrome」。镜像预装 Chrome；Edge 只有 Windows 自带，Linux 走微软 flat 仓库、macOS 走 brew cask（步骤在 `.github/workflows/browser-e2e.yml`）。三平台 e2e 的调用 job 写死在 `ci.yml`（matrix 展开的 job 名静态校验对不上），调用体在可复用工作流里；它们的**上报 context 名是「<调用 job 名> / <被调 workflow 的 job 名>」**（这里就是 `Browser e2e (Linux) / E2E`），`gate/branch-protection.json` 必须写组合名——`npm run gate:doctor` 会按 workflow 的 `uses:` 算出组合名再比对，写短了直接红。
+- **新增检查的上闸顺序**：先把 job 合进 workflow（此时线上保护还是旧的），观察首轮绿了再 `npm run gate:apply` 把它们变成必需检查；反过来做（先上闸再验证）会让 `enforce_admins` 把包括修复在内的所有 PR 一起锁死。
 - **issue 只由 PR 合入时自动关闭**：`PR contract` 这条检查强制 PR 正文带 `Resolves #N`（`.github/workflows/pr-gate.yml`，正文改了会重跑），没绑定 issue 的 PR 合不进去。**不要手动关闭一个没被 PR 验证过的 issue。** 确实不关联 issue 的改动（发版、纯文档、闸门自身）给 PR 打 `no-issue` 标签——跳过闭环是一次显式、可审计的动作，不是默认放行。
-- **闸门是配置即代码**：`gate/branch-protection.json` 是唯一声明处，改它再用 `npm run gate:apply` 上闸；`npm run gate:doctor`（离线、进 `npm run verify`）断言每个必需检查名真的存在于某条 workflow 的 job name 且那条 workflow 在 `pull_request` 上触发——防「job 改名 → context 永远不上报 → 所有 PR 永久卡死」。`npm run gate:live` 对比线上有没有被手改。**别在网页上点分支保护**：网页改动没有任何人核，正是 issue #4 那类事故的温床。
+- **闸门是配置即代码**：`gate/branch-protection.json` 是唯一声明处，改它再用 `npm run gate:apply` 上闸；`npm run gate:doctor`（离线、进 `npm run verify`）把每条 workflow 的上报名算出来（普通 job 用 job 名，调用可复用工作流的 job 用「调用 job 名 / 被调 job 名」），断言每个必需检查在其中、且那条 workflow 在 `pull_request` 上触发——防「job 改名 → context 永远不上报 → 所有 PR 永久卡死」。`npm run gate:live` 对比线上有没有被手改。**别在网页上点分支保护**：网页改动没有任何人核，正是 issue #4 那类事故的温床。
 - 发版提交（`chore(release)`）同样走 PR；tag 不在保护范围内，PR 合并后再推 tag（见 [docs/RELEASE.md](docs/RELEASE.md)）。
 - 排障：Copilot 的 PR 首次 CI 会停在 `action_required`（外部贡献者闸门，checks 其实没跑），需人工点 Approve；`copilot/**` 的 push 事件另有一条触发，见 [docs/AI-FIX.md](docs/AI-FIX.md)。
 

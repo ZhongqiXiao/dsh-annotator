@@ -5,7 +5,13 @@
  * 做法：克隆本仓，逐个把控制项打坏，重跑 assess，断言分数必须下降。
  * 掉不下来的变异 = 判据在「读关键词」而不是「看行为」——正是 clb-new 最痛的
  * 假门禁同构问题（永远 exit 0 拿满分）。
- * Usage: node scripts/mutation-test.mjs [--keep]
+ *
+ * 文件名故意不带 `-test` 后缀：`node --test`（无参数）按后缀自动收用例，叫
+ * mutation-test.mjs 会被当成一个单测文件在每个平台上白跑一遍（本机 92 秒，
+ * Windows/macOS 更慢），而它本来就有独立的 CI job。改叫 mutation-suite 就不用
+ * 让 `npm test` 靠传目录参数去挑，目录参数在 Node 22 上又不认（CI 直接红）。
+ *
+ * Usage: node scripts/mutation-suite.mjs [--keep]
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';

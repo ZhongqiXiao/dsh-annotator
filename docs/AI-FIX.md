@@ -34,7 +34,7 @@ gh pr checks <pr-number>                                   # 看 CI 验证结果
 
 ## 合入闸门：跑过用例才能合入
 
-main 已开启分支保护（`enforce_admins: true`）：**只能经 PR 合入**，且五个必需检查全绿才允许合并——`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Browser e2e`、`Plugin manifest integrity`、`PR contract (Resolves #N)`，并要求分支与 main 同步（strict；落后就先同步再重跑）。
+main 已开启分支保护（`enforce_admins: true`）：**只能经 PR 合入**，且九个必需检查全绿才允许合并——`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Unit tests (Windows)`、`Unit tests (macOS)`、`Browser e2e (Linux) / E2E`、`Browser e2e (Windows) / E2E`、`Browser e2e (macOS) / E2E`、`Plugin manifest integrity`、`PR contract (Resolves #N)`，并要求分支与 main 同步（strict；落后就先同步再重跑）。其中 `Unit tests (Windows/macOS)` 与三条 `Browser e2e` 是跨平台覆盖：Linux/Windows/macOS 各一台免费 runner，浏览器用例里 Chrome 与 Edge 都必须真的跑起来。
 
 - **issue 只由 `Resolves #N` 合入时自动关闭**：`PR contract` 直接检查 PR 正文，没有闭环引用的 PR 合不进去。不要手动关闭一个没被 PR 验证过的 issue——本仓 2026-11-11 就发生过 issue #4 手动关闭后 main 的 Browser e2e 仍红。不关联 issue 的改动（发版/纯文档）给 PR 打 `no-issue` 标签。
 - **闸门声明在 `gate/branch-protection.json`**：`npm run gate:apply` 上闸、`npm run gate:live` 查线上漂移、`npm run gate:doctor` 离线断言必需检查名与 workflow 对得上。**不要用网页改分支保护**。

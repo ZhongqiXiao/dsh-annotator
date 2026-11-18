@@ -27,7 +27,10 @@ test('传入 workspace cwd 时，profile 与截图的基目录改到临时目录
 	assert.ok(base);
 	assert.equal(path.relative(path.resolve(ROOT), base).startsWith('..'), false);
 	// 关键回归点：基目录绝不能落在项目里（旧实现是 cwd/.dsh-visual-annotator）。
-	assert.equal(path.relative('/work/app', base).startsWith('..'), true);
+	// Windows 上 /work/app 解析到当前盘，而临时目录在 C:，跨盘时 path.relative 直接
+	// 回绝对路径（不以 '..' 开头）——那同样证明「不在项目里」，两种形态都算通过。
+	const fromProject = path.relative('/work/app', base);
+	assert.equal(fromProject.startsWith('..') || path.isAbsolute(fromProject), true);
 	assert.equal(base.includes(path.join('/work/app', '.dsh-visual-annotator')), false);
 	// 同一个项目每次拿到同一个目录：profile 复用、_tryAdopt 仍能接管。
 	assert.equal(base, picker._scratchBase('/work/app'));

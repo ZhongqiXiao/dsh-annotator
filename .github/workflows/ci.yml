@@ -22,6 +22,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 完整门径只在 Linux 上跑：check/lint/format/gates/canary 依赖 POSIX 工具链，
+  # 换成 Windows 只会把「平台差异」混进「代码问题」里。平台覆盖交给下面的
+  # 单测与浏览器矩阵——那才是真正会因平台不同的部分。
   verify:
     name: Verify (check, lint, format, tests, gates, canary)
     runs-on: ubuntu-latest
@@ -48,6 +51,65 @@ jobs:
           name: ai-native-health-report
           path: docs/ai-native-health-report.md
 
+  # 单元测试是纯 Node（不起浏览器），但要吃平台的路径/大小写/换行差异，
+  # 所以两个平台的系统盘上各跑一遍。需要完整历史：三契约门禁要看 git 提交顺序。
+  unit-windows:
+    name: Unit tests (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+
+  unit-macos:
+    name: Unit tests (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+
+  # 真浏览器端到端：三个平台各一台，Chrome 与 Edge 都必须真的起来。
+  #
+  # 为什么不用 strategy.matrix 一把梭：分支保护的必需检查按 job 显示名比对，
+  # gate-doctor 是静态扫描 workflow 文本；matrix 展开出来的名字是运行时拼的，
+  # 静态校验对不上（写死还会被 `#` 行内注释陷阱坑一次）。所以三个平台各写一个
+  # caller job——它们只负责传 runner 与名字，步骤全在 browser-e2e.yml 里。
+  e2e-linux:
+    name: Browser e2e (Linux)
+    uses: ./.github/workflows/browser-e2e.yml
+    with:
+      runner: ubuntu-latest
+      browsers: chrome,edge
+
+  e2e-windows:
+    name: Browser e2e (Windows)
+    uses: ./.github/workflows/browser-e2e.yml
+    with:
+      runner: windows-latest
+      browsers: chrome,edge
+
+  e2e-macos:
+    name: Browser e2e (macOS)
+    uses: ./.github/workflows/browser-e2e.yml
+    with:
+      runner: macos-latest
+      browsers: chrome,edge
+
   mutation:
     name: Scorer mutation test (评分器的评分器)
     runs-on: ubuntu-latest
@@ -63,19 +125,6 @@ jobs:
       # 15 个变异逐个打坏控制项，评分必须下降；判据退化成「读关键词」即红
       - name: Mutation test
         run: npm run mutate
-
-  e2e:
-    name: Browser e2e
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: E2E
-        run: npm run test:e2e
 
   manifest:
     name: Plugin manifest integrity

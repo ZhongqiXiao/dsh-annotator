@@ -158,6 +158,18 @@ add(
 	'canary-gates.mjs 补阴性对照场景（干净夹具与同提交递增）',
 );
 const ci = read('.github/workflows/ci.yml');
+// e2e 的实际命令可以搬进本地可复用工作流（`uses: ./.github/workflows/x.yml`）：
+// 只读 ci.yml 会把「搬走了」误判成「没跑 e2e」，于是老老实实搬家反而掉分。
+// 判据必须跟着调用体走，同时两个文件都不许写 continue-on-error（失败就该红）。
+const ciCalls = (() => {
+	if (!ci) return null;
+	const parts = [ci];
+	for (const m of ci.matchAll(/uses:\s*\.\/\.github\/workflows\/([\w.-]+\.ya?ml)/g)) {
+		const sub = read(path.posix.join('.github/workflows', m[1]));
+		if (sub) parts.push(sub);
+	}
+	return parts.join('\n');
+})();
 add(
 	d2,
 	5,
@@ -414,8 +426,8 @@ add(
 	d6,
 	4,
 	'e2e 进 CI 且是真门禁（失败不会被吞）',
-	!!ci && /(test:e2e|E2E)/.test(ci) && !/continue-on-error/.test(ci),
-	'ci.yml 跑 e2e job，且不写 continue-on-error（失败就该红）',
+	!!ciCalls && /test:e2e/.test(ciCalls) && !/continue-on-error/.test(ciCalls),
+	'ci.yml（含它调用的可复用工作流）跑 npm run test:e2e，且不写 continue-on-error（失败就该红）',
 	'text',
 );
 
