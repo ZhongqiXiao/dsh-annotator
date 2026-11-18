@@ -43,7 +43,7 @@ npm run mutate   # 评分器的评分器：克隆本仓打坏 16 个控制项，
 npm run format   # prettier 全量格式化
 npm run lint:fix # eslint 自动修复
 npm test         # 只跑单元测试
-npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪个浏览器就跑哪个
+npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪个浏览器就跑哪个；CI 用 E2E_REQUIRE=chrome,edge 要求两个都必须有
 ```
 
 ## 代码规范
@@ -69,7 +69,9 @@ npm run test:e2e # 真浏览器端到端（无头 + --no-sandbox），装了哪�
 2026-11-11 的教训：issue #4 被手动关闭了，但 main 上的 Browser e2e 其实是红的——「关 issue」不等于「验证过」。现在这条路在服务端被物理堵住：
 
 - **main 只能通过 PR 合入**：分支保护开了 `enforce_admins: true`，直推与强制推送一律被拒，管理员也不例外。
-- **五个必需检查全绿才允许合并**：`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Browser e2e`、`Plugin manifest integrity`、`PR contract (Resolves #N)`；且 `strict: true`，分支落后 main 要先同步再重跑。
+- **九个必需检查全绿才允许合并**：`Verify (check, lint, format, tests, gates, canary)`、`Scorer mutation test (评分器的评分器)`、`Unit tests (Windows)`、`Unit tests (macOS)`、`Browser e2e (Linux)`、`Browser e2e (Windows)`、`Browser e2e (macOS)`、`Plugin manifest integrity`、`PR contract (Resolves #N)`；且 `strict: true`，分支落后 main 要先同步再重跑。
+- **跨平台覆盖是「真跑」而不是「配了就算」**：Linux 跑完整门径（check/lint/format/gates/canary 依赖 POSIX 工具链，塞进 Windows 只会把平台差异混进代码问题）；Windows / macOS 各跑一遍单元测试，再各起一台真浏览器跑 e2e，且 `DSH_VISUAL_ANNOTATOR_E2E_REQUIRE=chrome,edge` 断言 **Chrome 与 Edge 都真的被找到并跑过**——没装成不会静默降级成「只测了 Chrome」。镜像预装 Chrome；Edge 只有 Windows 自带，Linux 走微软 flat 仓库、macOS 走 brew cask（步骤在 `.github/workflows/browser-e2e.yml`）。三平台 e2e 的 job 名必须写死在 `ci.yml`（可复用工作流的 job 名不上报，matrix 展开的名字静态校验对不上），调用体在可复用工作流里。
+- **新增检查的上闸顺序**：先把 job 合进 workflow（此时线上保护还是旧的），观察首轮绿了再 `npm run gate:apply` 把它们变成必需检查；反过来做（先上闸再验证）会让 `enforce_admins` 把包括修复在内的所有 PR 一起锁死。
 - **issue 只由 PR 合入时自动关闭**：`PR contract` 这条检查强制 PR 正文带 `Resolves #N`（`.github/workflows/pr-gate.yml`，正文改了会重跑），没绑定 issue 的 PR 合不进去。**不要手动关闭一个没被 PR 验证过的 issue。** 确实不关联 issue 的改动（发版、纯文档、闸门自身）给 PR 打 `no-issue` 标签——跳过闭环是一次显式、可审计的动作，不是默认放行。
 - **闸门是配置即代码**：`gate/branch-protection.json` 是唯一声明处，改它再用 `npm run gate:apply` 上闸；`npm run gate:doctor`（离线、进 `npm run verify`）断言每个必需检查名真的存在于某条 workflow 的 job name 且那条 workflow 在 `pull_request` 上触发——防「job 改名 → context 永远不上报 → 所有 PR 永久卡死」。`npm run gate:live` 对比线上有没有被手改。**别在网页上点分支保护**：网页改动没有任何人核，正是 issue #4 那类事故的温床。
 - 发版提交（`chore(release)`）同样走 PR；tag 不在保护范围内，PR 合并后再推 tag（见 [docs/RELEASE.md](docs/RELEASE.md)）。

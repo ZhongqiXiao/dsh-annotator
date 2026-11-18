@@ -2,6 +2,18 @@
 
 本文件记录 dsh-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [未发布]
+
+### Added
+
+- **CI 门禁按平台拆开，Windows 与 macOS 也真跑**：此前全部 job 都钉在 `ubuntu-latest`，Windows/macOS 的问题（路径分隔符、大小写、`pkill` 之类只有 POSIX 才有的命令）只能等用户装了插件才发现。现在 Linux 跑完整门径（check/lint/format/gates/canary 依赖 POSIX 工具链，混进 Windows 只会把平台差异伪装成代码问题），Windows 与 macOS 各跑一遍单元测试；真浏览器端到端在三个平台各起一台（`.github/workflows/browser-e2e.yml` 可复用工作流），**Chrome 与 Edge 两个都必须真的跑起来**——`DSH_VISUAL_ANNOTATOR_E2E_REQUIRE=chrome,edge` 让「Edge 没装成」直接红，而不是静默降级成只测了 Chrome。镜像预装 Chrome，Edge 只有 Windows 自带，Linux 从微软 flat 仓库装、macOS 用 brew cask。三平台 e2e 的 job 名写死在 `ci.yml`（可复用工作流的 job 名不上报，matrix 展开的名字过不了 gate-doctor 的静态校验），必需检查从 5 个变成 9 个。评分器的「e2e 进 CI 且是真门禁」判据跟着 `uses:` 走进可复用工作流正文再判——否则把命令搬进复用工作流本身就会掉分，等于逼着人为了分数留在 `ci.yml` 里。
+- **`npm test` 不再顺手跑 92 秒的变异测试**：`node --test` 无参数时按后缀自动收用例，`scripts/mutation-test.mjs` 命中了 `*-test.mjs` 规则，于是每个平台都把「打坏 16 个控制项再评 16 次分」当单测跑了一遍。改名成 `scripts/mutation-suite.mjs`（它本来就有独立的 CI job），单测从 92 秒回到 0.6 秒。顺带发现 `node --test test/` 这种传目录的写法在 Node 22 上不认（`Cannot find module .../test`），所以没走那条路。
+- **`npm run test:e2e` 在 Windows 上能跑了**：脚本原来写成 `DSH_VISUAL_ANNOTATOR_E2E=1 node ...`，cmd.exe 会把整段当成一个叫 `DSH_VISUAL_ANNOTATOR_E2E=1` 的程序去执行，Windows 一跑就红。现在统一走 `scripts/run-e2e.mjs`：在 Node 里设好环境变量再 spawn 测试进程，三个平台同一个入口，额外参数原样转发给 `node --test`。
+
+### Fixed
+
+- **ego lite 不再每次打开都停在欢迎界面**：全新 profile 启动时 ego 会先开一扇整窗的「欢迎使用 ego(𝘭𝘪𝘵𝘦)」引导（`browser_ui: chrome://onboarding/`），它没有 execution context（读不到文档、点不到「开始使用」），Input 域也没实现（`Input.dispatchMouseEvent` → -32601），CDP 关不掉它；更要命的是 `Target.closeTarget` 在 0.6.3.14 上会连带退出整个浏览器进程（实测即便另开一个 page 窗口并 `Target.activateTarget` 激活它，关引导之后 `Browser.getVersion` 也不再应答），于是每次 launch 都重演「弹欢迎 → 关窗 → 进程没了 → 重开 → 又弹欢迎」。现在改成启动前把 ego 自己的首启开关写进 `<profile>/ego_config.json` 的 `not_first_run: true`（保留 ego 写的其它键，已标记则不重写），引导窗口压根不弹；写不进去时只告警让用户点一次「开始使用」，绝不再关窗。实测 `/launch { browser: 'ego' }` 从「只有 chrome://onboarding/」变成「agent 空间里的调试页 + 无引导窗口」。
+
 ## [0.7.2] - 2026-11-19
 
 ### Fixed

@@ -152,6 +152,21 @@ if (!ENABLED) {
 		assert.ok(installed.length > 0, '这台机器上没有 Chrome / Edge / ego lite，端到端用例无从验证');
 	});
 
+	// CI 用 DSH_VISUAL_ANNOTATOR_E2E_REQUIRE=chrome,edge 声明「这台机器必须有的浏览器」。
+	// 没有这条断言时，Edge 没装好会静默降级成「只跑了 Chrome」——CI 是绿的，覆盖是假的。
+	const required = String(process.env.DSH_VISUAL_ANNOTATOR_E2E_REQUIRE ?? '')
+		.split(',')
+		.map((id) => id.trim())
+		.filter(Boolean);
+	test('本平台要求的浏览器都装了（' + (required.join(' / ') || '未声明') + '）', () => {
+		const missing = required.filter((id) => !installed.includes(id));
+		assert.deepEqual(
+			missing,
+			[],
+			'缺少必需的浏览器：' + missing.join(', ') + '（安装步骤没生效，或路径不在 CANDIDATES 里）',
+		);
+	});
+
 	for (const browser of installed) {
 		const label = LABELS[browser] ?? browser;
 

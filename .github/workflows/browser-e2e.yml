@@ -1,0 +1,61 @@
+name: Browser e2e (reusable)
+
+# 三个平台共用的 e2e 步骤。ci.yml 里的 caller job 只传 runner，检查名用的也是
+# caller 的 job name——gate-doctor 靠「必需检查名 = 某个 job 的显示名」做静态
+# 校验，所以名字必须写在 ci.yml 里（可复用工作流里的 job 名不上报）。
+#
+# 这里只装镜像里缺的那个浏览器：三个镜像都预装 Chrome，Edge 只有 Windows
+# 自带，Linux/macOS 得自己装。
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: 目标 runner（ubuntu-latest / windows-latest / macos-latest）
+        required: true
+        type: string
+      browsers:
+        description: 本平台必须真的找到的浏览器（逗号分隔，缺一个用例就红）
+        required: false
+        type: string
+        default: 'chrome,edge'
+
+jobs:
+  e2e:
+    name: E2E
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Edge：Linux 走微软官方 flat 仓库（不分发行版，Ubuntu 版本升级不用改这里）
+      - name: Install Microsoft Edge (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-edge.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-edge.gpg] https://packages.microsoft.com/repos/edge stable main" | sudo tee /etc/apt/sources.list.d/microsoft-edge.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends microsoft-edge-stable
+          /usr/bin/microsoft-edge-stable --version
+
+      # Edge：macOS 只能靠 cask 装（镜像里没有 Edge，只有 Chrome）
+      - name: Install Microsoft Edge (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install --cask microsoft-edge
+          "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" --version
+
+      - name: Show discovered browsers
+        run: node -e "import('./lib/session.js').then((m) => console.log(JSON.stringify(m.availableBrowsers(), null, 2)))"
+
+      # 用例自己会按 DSH_VISUAL_ANNOTATOR_E2E_REQUIRE 断言本平台该有的浏览器都在，
+      # 少一个就是红，不允许「没装就静默跳过」那种假绿。
+      - name: E2E
+        run: npm run test:e2e
+        env:
+          DSH_VISUAL_ANNOTATOR_E2E_REQUIRE: ${{ inputs.browsers }}
