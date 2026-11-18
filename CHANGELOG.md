@@ -2,6 +2,13 @@
 
 本文件记录 dsh-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [Unreleased]
+
+### Fixed
+
+- **标签条不再可能一条都不显示**：默认空间的 context id 原来靠「第一个不属于已知空间的目标」去猜，而一个真实 profile 里同时躺着好几个 context（扩展的 service worker、内部页、另一个窗口的页各带一个），猜错一次就会把用户眼前这一页判成「别的空间」从标签条里筛掉——浏览器里页面好好的、HUD 也能点，面板却报「没有标签」。现在优先听 CDP 自己在 `Target.getBrowserContexts` 里给的 `defaultBrowserContextId`，其次看用户正在看的那一页落在哪个 context，且**认不出来的 context 一律算默认空间**（明确属于某个空间的标签才排除）。这也是 2026-11-18 main 上 `Browser e2e` 那条 `0 !== 1` 假红的真因。
+- **幽灵标签会被剪掉**：`refreshTabs` 原来只增不删，浏览器启动那一瞬被销毁的目标（事件在开「发现」之前就发生完了）会永远留在标签条上，点它什么也不会发生。现在每次对账都按 `Target.getTargets` 补新增、删已消失，并清掉它的 CDP 会话与注入状态；启动与接回窗口返回 `ready` 之前就各对一次，`/state` 第一次给出的标签条就是浏览器真实的那一排。
+
 ## [0.6.0] - 2026-11-18
 
 ### Added
