@@ -2,6 +2,14 @@
 
 本文件记录 dsh-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [Unreleased]
+
+### Fixed
+
+- **任务句措辞对齐验收断言**：issue #22 的 AC 要求 `grep -c "按编号逐行对应" lib/shared/annotation-markdown.js` 输出 ≥1，实际句子此前写成「按**下方**编号逐行对应」，断言比对不上（实测 0）。去掉「下方」二字，AC 原样可执行；客户端与 host 两份字面量同步修改（有逐字一致性测试把守）。
+- **清理 v61 中间态的过时注释**：三处注释仍说「栏头批量按钮」，但 v62 起开关已挪到底部操作行（清空按钮左边），注释跟着改，不再误导后来者。
+- **切到普通模式时退出批量勾选**：此前批量态与已选项跨视图残留，回参照模式会「莫名已选」；现在随 `setViewMode('plain')` 一并清掉，与同处既有的 `setArming(null)` / `setAssigning('')` 复位模式一致。
+
 ## [0.7.1] - 2026-11-19
 
 ### Changed
