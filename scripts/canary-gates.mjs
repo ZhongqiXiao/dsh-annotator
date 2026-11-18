@@ -14,7 +14,7 @@
  * blind the drill).
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -32,9 +32,10 @@ const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'dsh-va-canary-'));
 try {
 	const copyLib = (destLib) => {
 		mkdirSync(destLib, { recursive: true });
-		for (const f of ['index.js', 'client.js', 'overlay.js']) {
-			writeFileSync(path.join(destLib, f), readFileSync(path.join(libDir, f), 'utf8'));
-		}
+		// 搬整个 lib/，不只三个入口文件：overlay.js 现在从 shared/ 里 import 纯函数，
+		// 只搬入口会让夹具里的 overlay-import 检查报「模块找不到」，
+		// 于是阴性对照（干净夹具必须放行）被自己的夹具弄红，看着像门禁坏了。
+		cpSync(libDir, destLib, { recursive: true });
 	};
 	// replaceOrThrow: a canary fixture whose injection silently no-ops would
 	// fake a passing drill; refuse to continue instead.

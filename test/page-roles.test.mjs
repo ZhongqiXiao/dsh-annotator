@@ -103,6 +103,23 @@ test('pageHudInfo carries the host prompt for the HUD copy button', () => {
 	assert.equal(pageHudInfo({ url: page, prompt: null }).prompt, '');
 });
 
+// HUD 的「复制提示词」在一条标注都没有时必须是禁用的：host 的 prompt 在零标注时
+// 也是非空串（annotation-markdown 的空态文案），所以判据只能是 pickCount。
+test("pageHudInfo counts every pick, not just this page's", () => {
+	const page = url('/page');
+	const other = url('/other');
+	assert.equal(pageHudInfo({ url: page, picks: [] }).pickCount, 0);
+	const picks = [
+		{ id: 'a', role: 'target', pageKey: pageKeyOf(page) },
+		{ id: 'b', role: 'reference', pageKey: pageKeyOf(other) },
+	];
+	const info = pageHudInfo({ url: page, picks });
+	// 本页只有 a，但复制提示词复制的是一条改动 + 一条参照：按钮得是可点的。
+	assert.equal(info.count, 1);
+	assert.equal(info.pickCount, 2);
+	assert.equal(pageHudInfo({ url: page, picks: 'not-an-array' }).pickCount, 0);
+});
+
 test('pageHudInfo speaks for the landing, not for the page', () => {
 	const page = url('/page');
 	const picks = [{ id: 't1', role: 'target', pageKey: pageKeyOf(page) }];
