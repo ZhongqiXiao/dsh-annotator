@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { annotationMarkdown, TASK_PLAIN, TASK_REFERENCE } from '../lib/shared/annotation-markdown.js';
+import { LOCATE_RULE, annotationMarkdown, TASK_PLAIN, TASK_REFERENCE } from '../lib/shared/annotation-markdown.js';
 
 const ref = (id, over = {}) => ({
 	id,
@@ -52,6 +52,19 @@ test('无参照时 source 追加在表头里，并补上右括号', () => {
 test('空列表走调用方给的空态文案', () => {
 	assert.equal(annotationMarkdown([], { empty: '（没有匹配 id 的页面元素标注）' }), '（没有匹配 id 的页面元素标注）');
 	assert.equal(annotationMarkdown([]), '（当前还没有页面元素标注）');
+});
+
+// 坐标是「拾取那一瞬」的页面坐标快照（pageRect = getBoundingClientRect + scrollX/scrollY，CSS px）：
+// 滚动不影响它，但窗口尺寸、页面缩放、响应式重排与异步内容都会把它挪走。不写清楚，
+// 读提示词的 agent 会把 x/y 当锚点，换了窗口尺寸就认错元素。
+test('提示词把定位口径写成选择器为准，并标明坐标只是快照', () => {
+	const rect = { x: 688, y: 364, width: 273, height: 20 };
+	const plain = annotationMarkdown([target('1', { pageRect: rect })]);
+	assert.ok(plain.includes(LOCATE_RULE), '普通模式带定位口径');
+	assert.ok(plain.includes('位置：x=688 y=364 273×20（快照，仅供对照）'), '坐标后面必须标快照');
+	const paired = annotationMarkdown([ref('r1'), target('t1', { pairIds: ['r1'], pageRect: rect })]);
+	assert.ok(paired.includes(LOCATE_RULE), '参照模式同一句');
+	assert.ok(paired.includes('位置：x=688 y=364 273×20（快照，仅供对照）'), '参照模式同样标快照');
 });
 
 test('参照模式写清执行边界与改动↔参照的对照关系', () => {
