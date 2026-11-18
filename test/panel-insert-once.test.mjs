@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+import { TASK_PLAIN } from '../lib/shared/annotation-markdown.js';
+
 const SOURCE = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8');
 const PICK = { id: 'p4', selector: 'button.primary', comment: '字体太大', text: '提交' };
-const HEADER = '请根据以下标注修改代码：';
+// 插入草稿的开头就是提示词里的任务句（普通模式：无参照）。
+const HEADER = TASK_PLAIN;
 
 /** Minimal hooks runtime: enough of React's contract to mount a panel and run its effects. */
 function createRuntime() {

@@ -11,6 +11,9 @@ test('classifyBindingAction accepts well-formed actions', () => {
 	assert.equal(classifyBindingAction({ kind: 'mode', mode: 'off' }), 'mode');
 	assert.equal(classifyBindingAction({ kind: 'undo' }), 'undo');
 	assert.equal(classifyBindingAction({ kind: 'consume' }), 'consume');
+	// HUD 上的落点开关：只有两个合法值，hook 进来的是「下一处进哪一栏」。
+	assert.equal(classifyBindingAction({ kind: 'landing', slot: 'reference' }), 'landing');
+	assert.equal(classifyBindingAction({ kind: 'landing', slot: 'target' }), 'landing');
 });
 
 test('classifyBindingAction rejects malformed or unknown payloads', () => {
@@ -23,4 +26,6 @@ test('classifyBindingAction rejects malformed or unknown payloads', () => {
 	assert.equal(classifyBindingAction({ kind: 'zoom' }), null);
 	assert.equal(classifyBindingAction({ kind: 'mode', mode: 'pause' }), null);
 	assert.equal(classifyBindingAction({ kind: 'mode', mode: 123 }), null);
+	assert.equal(classifyBindingAction({ kind: 'landing' }), null);
+	assert.equal(classifyBindingAction({ kind: 'landing', slot: 'neutral' }), null);
 });
