@@ -41,6 +41,37 @@ test('cleared picks still answer findPick/readablePicks so pasted chips keep exp
 	);
 });
 
+// 面板的勾选清空：ids 与 scope 取交集。勾选来自单个栏，过期 id 必须被无视，
+// 否则「勾了一条又删了别的」会把不相干的标注一起清掉。
+test('clear(scope, ids) only clears the checked picks and undoes them as one batch', async () => {
+	const picker = seed([
+		{ id: 1, seq: 1, role: 'target' },
+		{ id: 2, seq: 2, role: 'target' },
+		{ id: 3, seq: 3, role: 'reference' },
+	]);
+	const cleared = await picker.clear('target', ['1', 999]);
+	assert.equal(cleared.cleared, 1);
+	assert.deepEqual(
+		cleared.picks.map((pick) => pick.id),
+		[2, 3],
+	);
+	// 撤销把这一批整条拿回来，不会顺带复活别的。
+	const back = picker.restorePick();
+	assert.equal(back.restored, 1);
+	assert.deepEqual(back.picks.map((pick) => pick.id).sort(), [1, 2, 3]);
+});
+
+test('clear(scope, ids) refuses ids from the other column', async () => {
+	const picker = seed([
+		{ id: 1, seq: 1, role: 'target' },
+		{ id: 2, seq: 2, role: 'reference' },
+	]);
+	const cleared = await picker.clear('reference', ['1']);
+	assert.equal(cleared.cleared, 0);
+	assert.equal(picker.state.picks.length, 2);
+	assert.equal(picker.retired.length, 0);
+});
+
 test('clear() on an empty list is a no-op and leaves the archive untouched', async () => {
 	const picker = seed([{ id: 5, seq: 5 }]);
 	await picker.clear();
