@@ -3,7 +3,7 @@
 		"Stop": [
 			{
 				"matcher": "",
-				"hooks": [{ "type": "command", "command": "node hooks/verify-before-finish.mjs" }]
+				"hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/hooks/verify-before-finish.mjs\"" }]
 			}
 		]
 	}

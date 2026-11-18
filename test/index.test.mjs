@@ -40,3 +40,14 @@ test('filteredPicksMarkdown handles empty list and sparse picks', () => {
 	assert.match(md, /1\. `div` — div/);
 	assert.doesNotMatch(md, /评论：/);
 });
+
+// 工具描述是 agent 唯一读到的契约：只读必须按「标注」划，不能写成「参照标注所在页面」——
+// 参照与改动同页时，那句话会让它既不敢改 T 处、又不敢照 R 处，两头卡住。
+test('tool contract keeps read-only scoped to the pick, not the page', async () => {
+	const source = await import('node:fs/promises').then((fs) =>
+		fs.readFile(new URL('../lib/index.js', import.meta.url), 'utf8'),
+	);
+	assert.ok(!source.includes('禁止修改参照标注所在页面的对应代码'));
+	assert.ok(!source.includes('此时按参照新建页面'));
+	assert.ok(source.includes('只读的是它指向的那个元素，不是它所在的整页'));
+});
