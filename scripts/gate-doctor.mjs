@@ -14,8 +14,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const GATE_FILE = path.join(repoRoot, 'gate', 'branch-protection.json');
-const WORKFLOW_DIR = path.join(repoRoot, '.github', 'workflows');
+// canary 夹具需要把体检指到临时目录；不设时体检本仓根。--live/--apply 的 git/gh 操作仍用 repoRoot。
+const ROOT = process.env.DSH_VA_GATE_ROOT ? path.resolve(process.env.DSH_VA_GATE_ROOT) : repoRoot;
+const GATE_FILE = path.join(ROOT, 'gate', 'branch-protection.json');
+const WORKFLOW_DIR = path.join(ROOT, '.github', 'workflows');
 
 const problems = [];
 const ok = (msg) => console.log('✓ ' + msg);
@@ -43,6 +45,9 @@ const readGate = () => {
 const parseWorkflow = (file) => {
 	const text = readFileSync(file, 'utf8');
 	const jobNames = [];
+	// YAML 行内注释陷阱：值未加引号时 ` #` 之后被解析器当注释吃掉，job 显示名随之截断，
+	// 必需 context 永远等不到（2026-11-12 PR #12 实锤）。行级扫描必须按解析后的真实名字算。
+	const commentTraps = [];
 	let inJobs = false;
 	for (const raw of text.split(/\r?\n/)) {
 		const line = raw.replace(/\t/g, '  ');
@@ -55,11 +60,20 @@ const parseWorkflow = (file) => {
 		if (!inJobs) continue;
 		// 步骤的 `- name:` 以 "- " 开头，不是 job 名
 		const m = line.trim().match(/^name:\s*(.+)$/);
-		if (m) jobNames.push(m[1].replace(/^['"]|['"]$/g, '').trim());
+		if (!m) continue;
+		const value = m[1].trim();
+		const quoted = /^(['"]).*\1$/.test(value);
+		if (!quoted && /\s#/.test(value)) {
+			commentTraps.push(value);
+			jobNames.push(value.replace(/\s#.*$/, '').trim());
+		} else {
+			jobNames.push(value.replace(/^['"]|['"]$/g, '').trim());
+		}
 	}
 	return {
-		file: path.relative(repoRoot, file),
+		file: path.relative(ROOT, file),
 		jobNames,
+		commentTraps,
 		onPullRequest: /pull_request/.test(text),
 	};
 };
@@ -72,6 +86,18 @@ const workflows = existsSync(WORKFLOW_DIR)
 			.map((f) => parseWorkflow(path.join(WORKFLOW_DIR, f)))
 	: [];
 if (!workflows.length) bad('.github/workflows/ 下没有任何 workflow', '闸门必需检查至少要有 job 去上报');
+
+// job name 里未加引号的 ` #` = 行内注释截断：必需检查名永远上报不上来（幽灵检查卡死所有 PR）。
+for (const w of workflows) {
+	for (const t of w.commentTraps) {
+		bad(
+			'job name「' + t + '」（' + w.file + '）未加引号且含 " #"——YAML 行内注释陷阱',
+			'解析器会把 # 之后当注释吃掉，实际 job 名是「' +
+				t.replace(/\s#.*$/, '').trim() +
+				'」，必需 context 永远等不到 → 所有 PR 卡死。给 name 值加引号（双引号或单引号均可）',
+		);
+	}
+}
 
 if (gate) {
 	if (!Array.isArray(gate.requiredChecks) || gate.requiredChecks.length === 0) {

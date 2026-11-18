@@ -238,6 +238,59 @@ try {
 		{ CI: '', GITHUB_ACTIONS: '' },
 	);
 
+	// --- gate-doctor: YAML 行内注释陷阱（job name 未加引号，# 之后被吃掉）---
+	// 2026-11-12 PR #12 实锤：name: PR contract (Resolves #N) 不加引号，实际 job 名被截断成
+	// PR contract (Resolves，必需 context 永不上报，所有 PR 卡死。双向探针防检测本身退化。
+	const gateFixture = (root, quoted) => {
+		mkdirSync(path.join(root, 'gate'), { recursive: true });
+		mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
+		writeFileSync(
+			path.join(root, 'gate', 'branch-protection.json'),
+			JSON.stringify(
+				{
+					branch: 'main',
+					strict: true,
+					enforceAdmins: true,
+					requiredApprovals: 0,
+					allowForcePushes: false,
+					allowDeletions: false,
+					requiredChecks: ['PR contract (Resolves #N)'],
+				},
+				null,
+				'\t',
+			),
+		);
+		const nameLine = quoted ? '    name: "PR contract (Resolves #N)"' : '    name: PR contract (Resolves #N)';
+		writeFileSync(
+			path.join(root, '.github', 'workflows', 'pr-gate.yml'),
+			`name: PR Gate
+on:
+  pull_request:
+jobs:
+  issue-contract:
+${nameLine}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`,
+		);
+		writeFileSync(path.join(root, '.github', 'PULL_REQUEST_TEMPLATE.md'), '# PR\n\nResolves #N\n');
+	};
+	const gateTrapRoot = path.join(tempRoot, 'gate-trap');
+	gateFixture(gateTrapRoot, false);
+	fail(
+		'gate-doctor catches an unquoted # in a job name (YAML inline comment trap)',
+		process.execPath,
+		[script('gate-doctor.mjs')],
+		'行内注释陷阱|吃掉',
+		{ DSH_VA_GATE_ROOT: gateTrapRoot },
+	);
+	const gateOkRoot = path.join(tempRoot, 'gate-ok');
+	gateFixture(gateOkRoot, true);
+	pass('gate-doctor passes a properly quoted job name fixture', process.execPath, [script('gate-doctor.mjs')], {
+		DSH_VA_GATE_ROOT: gateOkRoot,
+	});
+
 	// ============ 评分器自证：它自己不许是「永远 exit 0」 ============
 
 	// 评分器自证：默认始终执行。只在第二层嵌套（canary→评分器→canary）时停下，

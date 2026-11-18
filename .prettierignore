@@ -2,3 +2,5 @@ node_modules/
 package-lock.json
 .memsearch/
 ledger/
+.impeccable/
+docs/ai-native-health-report.md

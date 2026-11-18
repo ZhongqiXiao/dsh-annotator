@@ -13,7 +13,9 @@ permissions:
 
 jobs:
   issue-contract:
-    name: PR contract (Resolves #N)
+    # 名字必须加引号：YAML 里 ` #` 起行内注释，不引号会把 #N) 吃掉，
+    # check run 名变成 PR contract (Resolves，必需 context 永远等不到（幽灵检查卡死合并）。
+    name: 'PR contract (Resolves #N)'
     runs-on: ubuntu-latest
     steps:
       - name: PR body links an issue (or carries the no-issue label)
