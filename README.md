@@ -50,7 +50,7 @@ dsh plugin --profile web add dsh-annotator
 dsh web
 ```
 
-钉版本写成 `dsh-annotator@0.6.1`，从仓库装写成 `github:zhongqixiao/dsh-annotator`。
+钉版本写成 `dsh-annotator@0.7.0`，从仓库装写成 `github:zhongqixiao/dsh-annotator`。
 
 ### 方式 C：本地目录（开发模式）
 
