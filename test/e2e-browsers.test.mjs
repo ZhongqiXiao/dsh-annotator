@@ -155,6 +155,31 @@ if (!ENABLED) {
 	for (const browser of installed) {
 		const label = LABELS[browser] ?? browser;
 
+		// 2026-11-18 main 上那条「0 !== 1」就是这样来的：默认空间的 context id 猜
+		// 错了，真正的页面被当成「别的空间」从标签条里筛掉。这一条把口径钉死：
+		// 默认空间的标签条必须和浏览器的真实页面一一对应，猜错也不许丢页面。
+		// ego lite 自己会切到独立空间，标签条按空间过滤，这里不对它断言。
+		test(label + '：标签条与浏览器真实页面一一对应', async () => {
+			if (browser === 'ego') return;
+			const { dir, picker } = makePicker();
+			try {
+				await withServer(async (base) => {
+					await picker.launch({ browser, cwd: dir, url: base + '/a' });
+					const live = await picker.cdp.send('Target.getTargets');
+					const pages = (live.targetInfos ?? []).filter(
+						(info) => info.type === 'page' && !String(info.url).startsWith('devtools://'),
+					);
+					const ids = (tabs) => tabs.map((tab) => tab.targetId).sort();
+					assert.deepEqual(ids(picker.snapshot().tabs), ids(pages), '默认空间的标签条应与浏览器真实的页面一致');
+					// 模拟老 CDP：没有 defaultBrowserContextId，默认空间只能猜，且猜错了。
+					picker.defaultContextId = 'stale-' + Date.now();
+					assert.equal(picker.snapshot().tabs.length, pages.length, '默认空间猜错了也不许把页面筛掉');
+				});
+			} finally {
+				await teardown(picker, dir);
+			}
+		});
+
 		test(label + '：启动 → 拾取层注入 → 标签复用 → 断开后接回同一实例', async () => {
 			const { dir, picker } = makePicker();
 			try {
