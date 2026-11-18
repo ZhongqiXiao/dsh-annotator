@@ -113,6 +113,27 @@ test('overlay supports Alt+R for the landing switch on every platform', () => {
 	assert.ok(OVERLAY_SCRIPT.includes('e.isComposing || e.keyCode === 229'), '输入法组合中不抢键');
 });
 
+// 用户报「HUD 最左边有个 807」：拖动把手原是 CSS 的盲文码点 content:"\2807"，
+// 但它住在注入脚本的字符串里，页面端 JS 先按八进制转义把 `\2` 吃掉，CSS 只收到一个
+// 控制符 + 字面量 "807"——看到的不是盲文点，而是「807」三个数字。现在把手换成内联 SVG
+// 的六点（不吃转义、不挑字体），并加一条通杀断言：注入脚本里的 CSS 码点必须双反斜杠。
+test('overlay draws the drag handle without a JS-eaten CSS escape', () => {
+	assert.ok(OVERLAY_SCRIPT.includes('<svg class="grip-dots"'), '拖动把手的图形是 SVG 六点');
+	assert.ok(OVERLAY_SCRIPT.includes("'.grip .grip-dots{display:block"), 'SVG 自己有尺寸，不靠 ::before 的字形');
+	assert.ok(!/content:"\\[0-9a-fA-F]/.test(OVERLAY_SCRIPT), 'CSS 码点写成单反斜杠会被页面端 JS 吃掉');
+});
+
+// 「暂停」一直写着 Esc 键帽，换栏却只有悬停提示，用户根本不知道有 ⌥R。键帽文案必须
+// 跟平台走（macOS ⌥ R / Windows·Linux Alt+R），且只有 HOTKEY_R 一个来源。
+test('overlay shows a platform-aware keycap for the landing switch', () => {
+	assert.ok(OVERLAY_SCRIPT.includes('class="seg-k"'), '落点开关带一枚可见键帽');
+	assert.ok(
+		OVERLAY_SCRIPT.includes('\'<span class="seg-k" aria-hidden="true" title="按 \' + HOTKEY_R'),
+		'键帽文案复用平台常量',
+	);
+	assert.ok(OVERLAY_SCRIPT.includes('在「改动 / 参照」之间切换'), '悬停说明两个方向都切');
+});
+
 // 普通模式下不展开 HUD 也得能把已有标注拿走：折叠胶囊里要有「复制提示词」，
 // 而且同样能换落点——否则普通模式就只能「只能标、不能带走」。
 // 提示词内容由 host 生成（与面板复制、工具输出同一份），页面只负责放进剪贴板：
