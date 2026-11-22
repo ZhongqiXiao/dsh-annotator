@@ -2,10 +2,12 @@
 
 本文件记录 dsh-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-## [未发布]
+## [0.8.0] - 2026-11-22
 
 ### Added
 
+- **标注文字能整段复制，也能改写**：点中带文字的元素后，卡片多出一行「复制文字 / 改文案」。复制拿到的是元素整段原文——采集上限 4000 字，并同时上报 `textLength`（页面真实字数）与 `textTruncated`，长文不再只剩开头 200 字；`http://` 页面剪贴板不可用时退回 `execCommand`。Web 面板的正文块从单行省略改为可换行可滚动，旁边同样有「复制文字」。
+- **「改文案」把一句「这里改改」变成带目标的标注**：卡片上点「改文案」会给这条标注打 `textEdit` 标记并预填改写要求（保持原意与信息量、只替换元素里的文字，结构与样式都不动），面板里还能填「期望文案（可不填）」——填了就逐字替换成它，留空按评论重写。提示词里长文单列「 原文：」行（400 字上限，超出标「共 N 字；这里只带前 400 字」，页面超出采集上限标「页面共 N 字，已截断」），执行要求新增一条文案规则（普通形态第 4 条、参照形态第 5 条）。参考落点是只读规范，不给这个动作，免得 agent 连参考页一起改。
 - **CI 门禁按平台拆开，Windows 与 macOS 也真跑**：此前全部 job 都钉在 `ubuntu-latest`，Windows/macOS 的问题（路径分隔符、大小写、`pkill` 之类只有 POSIX 才有的命令）只能等用户装了插件才发现。现在 Linux 跑完整门径（check/lint/format/gates/canary 依赖 POSIX 工具链，混进 Windows 只会把平台差异伪装成代码问题），Windows 与 macOS 各跑一遍单元测试；真浏览器端到端在三个平台各起一台（`.github/workflows/browser-e2e.yml` 可复用工作流），**Chrome 与 Edge 两个都必须真的跑起来**——`DSH_VISUAL_ANNOTATOR_E2E_REQUIRE=chrome,edge` 让「Edge 没装成」直接红，而不是静默降级成只测了 Chrome。镜像预装 Chrome，Edge 只有 Windows 自带，Linux 从微软 flat 仓库装、macOS 用 brew cask。三平台 e2e 的 job 名写死在 `ci.yml`（可复用工作流的 job 名不上报，matrix 展开的名字过不了 gate-doctor 的静态校验），必需检查从 5 个变成 9 个。评分器的「e2e 进 CI 且是真门禁」判据跟着 `uses:` 走进可复用工作流正文再判——否则把命令搬进复用工作流本身就会掉分，等于逼着人为了分数留在 `ci.yml` 里。
 - **`npm test` 不再顺手跑 92 秒的变异测试**：`node --test` 无参数时按后缀自动收用例，`scripts/mutation-test.mjs` 命中了 `*-test.mjs` 规则，于是每个平台都把「打坏 16 个控制项再评 16 次分」当单测跑了一遍。改名成 `scripts/mutation-suite.mjs`（它本来就有独立的 CI job），单测从 92 秒回到 0.6 秒。顺带发现 `node --test test/` 这种传目录的写法在 Node 22 上不认（`Cannot find module .../test`），所以没走那条路。
 - **`npm run test:e2e` 在 Windows 上能跑了**：脚本原来写成 `DSH_VISUAL_ANNOTATOR_E2E=1 node ...`，cmd.exe 会把整段当成一个叫 `DSH_VISUAL_ANNOTATOR_E2E=1` 的程序去执行，Windows 一跑就红。现在统一走 `scripts/run-e2e.mjs`：在 Node 里设好环境变量再 spawn 测试进程，三个平台同一个入口，额外参数原样转发给 `node --test`。

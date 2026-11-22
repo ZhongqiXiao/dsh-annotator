@@ -174,11 +174,16 @@
 `test/panel-target-visual.test.mjs` 两条都逐字比对——两处措辞不许各写各的。
 
 - 第二段固定是**任务句**（有参照 `TASK_REFERENCE`，没有参照 `TASK_PLAIN`），一句话说清「改哪、什么只读」。
-- 没有参照：首行仍是「页面元素标注（N 处，来源 chrome：URL）」、单块数字编号；同样带任务句与三条执行要求
-  （一条标注对应一处元素按「评论」改／别顺手重构同页其它部分／改完逐条自检）。
+- 没有参照：首行仍是「页面元素标注（N 处，来源 chrome：URL）」、单块数字编号；同样带任务句与四条执行要求
+  （一条标注对应一处元素按「评论」改／别顺手重构同页其它部分／改完逐条自检／带「原文」的是文案改动：只换文字，
+  结构样式属性都不动，有「期望文案」就逐字换成它）。
+- **文案改写**是标注的一种意图，不是另一套提示词：短文本（≤60 字）直接跟在标注行标题里；长文本、标了
+  「改文案」或填了「期望文案」的，标题只留选择器 + 标签，正文多一行「 原文：…」（400 字上限，超出标
+  「共 N 字；这里只带前 400 字」，页面那一侧超出采集上限时标「页面共 N 字，已截断」）与可选的
+  「 期望文案：…」。原文行排在「页面 / 位置」之前——要被替换的那段字不能被位置信息隔开。
 - 有参照（对照关系是主角）：
   1. 首行「页面元素标注（N 处：X 处改动 / Y 处参照）」——先给规模。
-  2. 「执行要求」四条编号 1..4：**边界按标注划，不按页面划**——只改带 T 编号的那几处，带 R 编号的只取样式、
+  2. 「执行要求」编号 1..5：**边界按标注划，不按页面划**——只改带 T 编号的那几处，带 R 编号的只取样式、
      不改那处元素与它的代码；改动与参照可以同页（同页里带 R 编号的那几处依然只读）；按「参照：」行照做
      （没写维度就整体对齐、多条冲突以先列者为准）；改完逐条自检（T 都改到位、参照维度都对齐、R 一处没动）。
      执行意图写在最前面，agent 不必从行文里猜。
@@ -202,9 +207,11 @@
 
 - pick 新增：role / roleSource / pairIds / pairId / pageKey / pageTitle / refLabel / spec /
   included / referencedAt / pageClosed（派生）。
+- 文案字段：text（正文，页面侧最多采集 4000 字）/ textLength（页面上的真实字数）/ textTruncated（是否
+  被采集上限截断）/ textEdit（用户标了「改文案」）/ wantedText（用户填的期望文案，非空即自动 textEdit）。
 - pages：{ key, url, title, label, counts{target,reference,total}, active, closed, fullShot }，按 URL 去重——
   **没有 role / refIndex / targetId**（角色已移进标注，页面只是出处）。
-- 路由：/pick-role、/pick-include、/pick-spec、/pair（body.move=true 时从别处挪走）、
+- 路由：/pick-role、/pick-include、/pick-spec、/wanted-text、/text-edit、/pair（body.move=true 时从别处挪走）、
   /unpair、/pair-all、/pageshot、/clear（scope）、/arm（落点同步：{ slot, pairId } 或 null，host 据此定角色与配对）；
   /page-role 已删除。
 - snapshot 新增：arming（host 侧待落位）、reuseNotice（复用通知 { pickId, role, ts }）。

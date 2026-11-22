@@ -199,3 +199,29 @@ test('overlay 的 CSS 规则都是缩进过的', () => {
 	assert.ok(!OVERLAY_SCRIPT.includes("\n'.hud .cluster>button.pri:disabled"));
 	assert.ok(!OVERLAY_SCRIPT.includes('\n// 主按钮禁用时'));
 });
+
+// 文字标注要能「整段拿走、按需重写」。早先只采 200 字、卡片里是一个单行省略的引用块：
+// 长文案既复制不全，也没法对 agent 说「这段字重写一下」。
+test('overlay 采集完整原文并带上截断标记', () => {
+	assert.ok(OVERLAY_SCRIPT.includes('var TEXT_CAP = 4000;'), '采集上限集中在常量里');
+	assert.ok(OVERLAY_SCRIPT.includes('textLength: text.length'));
+	assert.ok(OVERLAY_SCRIPT.includes('textTruncated: text.length > TEXT_CAP'));
+	assert.ok(!OVERLAY_SCRIPT.includes('text: text.slice(0, 200)'), '旧的 200 字截断必须撤掉');
+});
+
+test('卡片提供「复制文字」与「改文案」两个文案动作', () => {
+	assert.ok(OVERLAY_SCRIPT.includes('class="qacts"'), '动作行单独一格，不挤进引用块');
+	assert.ok(OVERLAY_SCRIPT.includes('复制文字'));
+	assert.ok(OVERLAY_SCRIPT.includes('function copyText()'));
+	assert.ok(OVERLAY_SCRIPT.includes('function markTextEdit()'));
+	assert.ok(OVERLAY_SCRIPT.includes("on(nodes.qcopy, 'click'"));
+	assert.ok(OVERLAY_SCRIPT.includes("on(nodes.qedit, 'click'"));
+	// 参考侧是只读规范：在那里提供「改文案」会带着 agent 去改参考页。
+	assert.ok(OVERLAY_SCRIPT.includes("nodes.qedit.style.display = hasText && !isReference() ? '' : 'none'"));
+});
+
+test('「改文案」的意图跟着标注一起提交', () => {
+	assert.ok(OVERLAY_SCRIPT.includes('payload.textEdit = true'));
+	// 提交后与换标注时都要复位：不复位会让下一条标注莫名带上文案改写要求。
+	assert.ok(OVERLAY_SCRIPT.includes('state.textEdit = false'));
+});

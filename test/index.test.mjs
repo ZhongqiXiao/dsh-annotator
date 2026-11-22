@@ -27,7 +27,8 @@ test('filteredPicksMarkdown renders picks with comment, url, rect and shot', () 
 		},
 	]);
 	assert.match(md, /页面元素标注（1 处）/);
-	assert.match(md, /1\. `#submit-btn` — button： 提交 订单/);
+	// 文本压平后 trim 掉首尾空白：全角冒号后面再跟一个空格，读起来像打错的字。
+	assert.match(md, /1\. `#submit-btn` — button：提交 订单/);
 	assert.match(md, /页面：http:\/\/localhost:5173\/checkout/);
 	assert.match(md, /位置：x=10 y=21 80×24/);
 	assert.match(md, /评论：按钮颜色改成主色/);

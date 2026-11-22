@@ -176,3 +176,25 @@ test('勾选框默认不渲染，点底部「批量操作」才出现', () => {
 	assert.ok(CLIENT.includes('selectMode && selectedIds.length'), '选中条仅在批量模式下才出现');
 	assert.ok(CLIENT.includes('if (selectMode) setSelected([]);'), '退出批量必须清掉已勾选，不留隐藏状态');
 });
+
+// 正文块曾经是单行省略：长文案在面板里只剩开头几个字，用户连复制都拿不到全文，
+// 提示词里的「原文」也就跟着没用。现在保留换行，并配「复制文字 / 改文案」两个动作。
+test('面板正文块保留换行，并提供复制文字与改文案', () => {
+	assert.ok(CLIENT.includes('white-space:pre-wrap'), '正文块保留换行');
+	assert.ok(
+		!CLIENT.includes('.vp-text{font-size:12px;color:var(--vp-muted);overflow:hidden'),
+		'单行省略必须撤掉，否则用户看到的不是原文',
+	);
+	assert.ok(CLIENT.includes("'复制文字'"));
+	assert.ok(CLIENT.includes("pick.textEdit ? '改文案 ✓' : '改文案'"), '改文案按钮要能显示已标记');
+	assert.ok(CLIENT.includes('期望文案（可不填）'), '期望文案输入框');
+	assert.ok(CLIENT.includes("post('/wanted-text'"));
+	assert.ok(CLIENT.includes("post('/text-edit'"));
+	// 参考侧只读：不给改文案按钮，避免 agent 顺手改参考页的文案。
+	assert.ok(CLIENT.includes('var isRef = pick.role ==='));
+});
+
+test('插入对话的文本块对长文案单列「原文」', () => {
+	assert.ok(CLIENT.includes("lines.push('    原文：'"));
+	assert.ok(CLIENT.includes("lines.push('    期望文案：'"));
+});

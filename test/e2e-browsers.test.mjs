@@ -36,6 +36,9 @@ const ENABLED = process.env.DSH_VISUAL_ANNOTATOR_E2E === '1';
 const LABELS = { chrome: 'Chrome', edge: 'Edge', ego: 'ego lite' };
 const OVERLAY_ROOT = '__dsh-vp-root';
 
+/** /text 页面上的长文案：4800 字，远超页面脚本 4000 字的采集上限，用来验证截断与真实字数上报。 */
+const LONG_TEXT = '这是一段很长的产品文案。'.repeat(400);
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitFor(predicate, { timeout = 8000, interval = 100, what = '条件' } = {}) {
@@ -52,7 +55,8 @@ async function withServer(run) {
 	const server = http.createServer((req, res) => {
 		res.setHeader('content-type', 'text/html; charset=utf-8');
 		if (String(req.url).startsWith('/cookie')) res.setHeader('set-cookie', 'scope=canvas; Path=/');
-		res.end('<!doctype html><meta charset="utf-8"><title>e2e ' + req.url + '</title><h1 id="h">hello</h1>');
+		const long = String(req.url).startsWith('/text') ? '<p id="long">' + LONG_TEXT + '</p>' : '';
+		res.end('<!doctype html><meta charset="utf-8"><title>e2e ' + req.url + '</title><h1 id="h">hello</h1>' + long);
 	});
 	await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 	const base = 'http://127.0.0.1:' + server.address().port;
@@ -296,6 +300,91 @@ if (!ENABLED) {
 					await picker.setMode('pick');
 					await picker.navigate(base + '/c');
 					assert.equal(picker.snapshot().mode, 'pick', '手动再打开后，打开网页应恢复自动进入');
+				});
+			} finally {
+				await teardown(picker, dir);
+			}
+		});
+
+		// 文案动作（复制整段原文 / 改文案）全在页面脚本里：单测只能断言字符串在，
+		// 命中的是不是同一张卡片、剪贴板收到的是不是整段原文、标记有没有跟着标注
+		// 落库，只有真点一次才算证明。
+		test(label + '：带文字的元素能复制整段原文，改文案标记随标注落库', async (t) => {
+			// ego lite 启动会接管既有窗口、页面落在自己的空间里，合成点击打不到它注入
+			// 的那一页（且会把后续 ego 用例带脏）；这条在 Chrome/Edge 上验。
+			if (browser === 'ego') return t.skip('ego lite 的窗口接管与空间语义不同，文案动作在 Chrome/Edge 上验');
+
+			const { dir, picker } = makePicker();
+			try {
+				await withServer(async (base) => {
+					await picker.launch({ browser, cwd: dir, url: base + '/text' });
+					await evaluateEventually(
+						picker,
+						'!!document.getElementById("' + OVERLAY_ROOT + '")',
+						(value) => value === true,
+						'拾取层注入',
+					);
+					// 无头浏览器里 navigator.clipboard 不可写：换成记录器，才能断言复制到的是整段原文。
+					await evaluate(
+						picker,
+						'Object.defineProperty(navigator, "clipboard", { value: { writeText: function (t) { window.__copied = String(t); return Promise.resolve(); } }, configurable: true }); true',
+					);
+					await picker.setMode('pick');
+					const root = 'document.getElementById("' + OVERLAY_ROOT + '").shadowRoot';
+					// overlay 在 document 上捕获 pointerdown/click：合成一次与用户相同的点击。
+					await evaluate(
+						picker,
+						'(function(){var el=document.getElementById("long");var r=el.getBoundingClientRect();' +
+							'var o={bubbles:true,cancelable:true,clientX:r.x+5,clientY:r.y+5,button:0,buttons:0,pointerId:1,pointerType:"mouse",isPrimary:true};' +
+							'el.dispatchEvent(new PointerEvent("pointermove",o));el.dispatchEvent(new PointerEvent("pointerdown",o));' +
+							'el.dispatchEvent(new MouseEvent("click",o));return true})()',
+					);
+					// 引用块只放开头一小段：卡片不能因为正文长就被撑开。
+					const quote = await evaluateEventually(
+						picker,
+						root + '.querySelector(".quote") ? ' + root + '.querySelector(".quote").textContent : null',
+						(value) => typeof value === 'string' && value.length > 0,
+						'卡片弹出',
+					);
+					assert.ok(quote.length <= 91, '引用块只放开头 90 字，实际 ' + quote.length);
+
+					await evaluateEventually(
+						picker,
+						root + '.querySelector(".qacts") ? getComputedStyle(' + root + '.querySelector(".qacts")).display : null',
+						(value) => value === 'flex',
+						'文案动作行露出',
+					);
+					await evaluate(picker, root + '.querySelector(".qcopy").click(); true');
+					const copied = await evaluateEventually(
+						picker,
+						'window.__copied || ""',
+						(value) => String(value).length > 0,
+						'复制动作写完剪贴板',
+					);
+					assert.equal(copied.length, 4000, '复制的是整段原文（受 4000 字采集上限），实际 ' + copied.length);
+
+					await evaluate(picker, root + '.querySelector(".qedit").click(); true');
+					const hint = await evaluateEventually(
+						picker,
+						root + '.querySelector("textarea") ? ' + root + '.querySelector("textarea").value : null',
+						(value) => typeof value === 'string' && value.includes('优化这段文案'),
+						'改文案预填改写要求',
+					);
+					assert.ok(hint.includes('只替换元素里的文字'), '预填要交代只换文字不动结构样式');
+					assert.equal(
+						await evaluate(picker, root + '.querySelector(".qedit").getAttribute("aria-pressed")'),
+						'true',
+						'按钮要显示已标记',
+					);
+
+					// 卡片上提交：HUD 的完成按钮也带 .pri，必须限定 .card 里的那颗。
+					await evaluate(picker, root + '.querySelector(".card button.pri").click(); true');
+					await waitFor(() => picker.snapshot().picks.length > 0, { what: '标注落到 host' });
+					const pick = picker.snapshot().picks[0];
+					assert.equal(pick.textLength, LONG_TEXT.length, '要上报页面真实字数，而不是采集上限');
+					assert.equal(pick.textTruncated, true, '超出采集上限要带截断标记');
+					assert.equal(pick.textEdit, true, '「改文案」标记要跟着标注走');
+					assert.ok(pick.comment.includes('优化这段文案'), '预填的改写要求要作为评论落库');
 				});
 			} finally {
 				await teardown(picker, dir);
