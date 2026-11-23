@@ -14,12 +14,12 @@
  * 用例退出时必须不留进程与临时目录：`teardown` 按 profile 目录 pkill（连
  * helper 子进程一起），末尾的 `after` 再把本条用例的目录兜一遍。
  *
- * 覆盖的是「浏览器 × 启动/复用/切换/空间」这些只有真浏览器才能证明的行为：
+ * 覆盖的是「浏览器 × 启动/复用/切换」这些只有真浏览器才能证明的行为：
  * - 启动后状态、可执行文件、拾取层真的注入
  * - 同址不重复开标签、新址新开标签
  * - 断开连接（保留窗口）后再启动，接回的是同一个实例（页面里的标记还在）
  * - 换浏览器：旧窗口关掉、新实例起来
- * - 调试空间：cookie 隔离、标签条按空间过滤、关闭后回默认空间
+ * - 标签条 = 窗口里全部页面（没有「空间」这一层，三个浏览器同一口径）
  */
 
 import assert from 'node:assert/strict';
@@ -74,7 +74,7 @@ function makePicker(options = {}) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vp-e2e-'));
 	createdDirs.push(dir);
 	// adoptRunning: false —— 用例必须起自己的实例。ego lite 默认会去接管用户
-	// 已经开着的那个窗口（pgrep + lsof 找监听端口），那样断言里的标签数、空间数
+	// 已经开着的那个窗口（pgrep + lsof 找监听端口），那样断言里的标签数
 	// 就取决于用户当下开着什么，用例会变成"看运气"。
 	return { dir, picker: new VisualPicker({ baseDir: dir, adoptRunning: false, ...options }) };
 }
@@ -174,12 +174,10 @@ if (!ENABLED) {
 	for (const browser of installed) {
 		const label = LABELS[browser] ?? browser;
 
-		// 2026-11-18 main 上那条「0 !== 1」就是这样来的：默认空间的 context id 猜
-		// 错了，真正的页面被当成「别的空间」从标签条里筛掉。这一条把口径钉死：
-		// 默认空间的标签条必须和浏览器的真实页面一一对应，猜错也不许丢页面。
-		// ego lite 自己会切到独立空间，标签条按空间过滤，这里不对它断言。
+		// 标签条 = 这个窗口里的全部页面，一个都不许筛：以前按 BrowserContext 过滤
+		// （2026-11-18 main 上那条「0 !== 1」就是默认 context 猜错、真页面被当别的
+		// 空间丢掉），现在空间子系统整个去掉了，三个浏览器同一口径。
 		test(label + '：标签条与浏览器真实页面一一对应', async () => {
-			if (browser === 'ego') return;
 			const { dir, picker } = makePicker();
 			try {
 				await withServer(async (base) => {
@@ -189,10 +187,7 @@ if (!ENABLED) {
 						(info) => info.type === 'page' && !String(info.url).startsWith('devtools://'),
 					);
 					const ids = (tabs) => tabs.map((tab) => tab.targetId).sort();
-					assert.deepEqual(ids(picker.snapshot().tabs), ids(pages), '默认空间的标签条应与浏览器真实的页面一致');
-					// 模拟老 CDP：没有 defaultBrowserContextId，默认空间只能猜，且猜错了。
-					picker.defaultContextId = 'stale-' + Date.now();
-					assert.equal(picker.snapshot().tabs.length, pages.length, '默认空间猜错了也不许把页面筛掉');
+					assert.deepEqual(ids(picker.snapshot().tabs), ids(pages), '标签条应与浏览器真实的页面一一对应');
 				});
 			} finally {
 				await teardown(picker, dir);
@@ -310,9 +305,9 @@ if (!ENABLED) {
 		// 命中的是不是同一张卡片、剪贴板收到的是不是整段原文、标记有没有跟着标注
 		// 落库，只有真点一次才算证明。
 		test(label + '：带文字的元素能复制整段原文，改文案标记随标注落库', async (t) => {
-			// ego lite 启动会接管既有窗口、页面落在自己的空间里，合成点击打不到它注入
-			// 的那一页（且会把后续 ego 用例带脏）；这条在 Chrome/Edge 上验。
-			if (browser === 'ego') return t.skip('ego lite 的窗口接管与空间语义不同，文案动作在 Chrome/Edge 上验');
+			// ego lite 启动会接管既有窗口，合成点击打不到它注入的那一页（且会把后续
+			// ego 用例带脏）；这条在 Chrome/Edge 上验。
+			if (browser === 'ego') return t.skip('ego lite 的窗口接管语义不同，文案动作在 Chrome/Edge 上验');
 
 			const { dir, picker } = makePicker();
 			try {
@@ -396,7 +391,6 @@ if (!ENABLED) {
 			try {
 				await withServer(async (base) => {
 					await picker.launch({ browser, cwd: dir, url: base + '/a' });
-					const spaceId = picker.snapshot().space;
 					const before = picker.snapshot().tabs.length;
 					// 关键：这次开页绕开插件自己的 navigate，模拟用户在浏览器里按 ⌘T 新开的
 					// 那一页——插件只能靠 Target 发现事件知道它，不该等到下次启动。
@@ -404,11 +398,7 @@ if (!ENABLED) {
 					// 之前这里写 background: true 是为了不抢焦点，但 headless Edge 下
 					// 后台页根本不加载，标题永远回填不上——那是测试造出来的场景，
 					// 不是产品缺陷。这里按真实操作建前台页。
-					const created = await picker.cdp.send('Target.createTarget', {
-						url: base + '/live',
-						background: false,
-						...(spaceId ? { browserContextId: spaceId } : {}),
-					});
+					const created = await picker.cdp.send('Target.createTarget', { url: base + '/live', background: false });
 					await waitFor(() => picker.snapshot().tabs.some((tab) => tab.targetId === created.targetId), {
 						// CI 的 2 vCPU runner 上，spawn 出来的浏览器被抢占时这两个事件
 						// （发现新页 / 标题回填）真的会晚到；这里等的是事件本身，放宽窗口
@@ -454,97 +444,70 @@ if (!ENABLED) {
 			}
 		});
 
-		test(label + '：调试空间与默认空间的 cookie 互不可见', async () => {
+		if (installed.includes('ego')) {
+			// 只用我们自己 spawn 的实例做接管对象：用户日常开着的 ego 里有他的标签与登录态，
+			// 用例不该往那儿开页。第二个 picker 只认这一个端点，也避免跑到别人的浏览器里。
+			const owner = makePicker();
+			const second = makePicker({ adoptRunning: true });
+			test('ego：接管已运行的实例，在其中开自己的页且不抢对方的浏览器', async () => {
+				try {
+					await withServer(async (base) => {
+						await owner.picker.launch({ browser: 'ego', cwd: owner.dir, url: base + '/a' });
+						const pid = owner.picker.proc?.pid;
+						assert.ok(pid, '第一个实例应是我们自己 spawn 的');
+
+						// 端口是随机分配的（--remote-debugging-port=0），浏览器把端口写进
+						// profile 的 DevToolsActivePort；profile 目录由 picker 自己算出。
+						const profileDir = owner.picker.windowProfileDir;
+						assert.ok(profileDir, 'spawn 之后应记下 profile 目录');
+						const port = await waitForPort(path.join(profileDir, 'DevToolsActivePort'));
+						second.picker.egoEndpoints = () => ['http://127.0.0.1:' + port];
+
+						const attached = await second.picker.launch({ browser: 'ego', cwd: second.dir, url: base + '/b' });
+						assert.equal(attached.status, 'ready');
+						assert.equal(attached.reused, true, '应接管已运行的实例，而不是再起一个');
+						assert.equal(attached.resumed, true);
+						assert.equal(second.picker.proc, null, '接管时我们不持有进程');
+						assert.ok(attached.tabs.length >= 1, '接管后标签条应能看到那扇窗口里的页面');
+						assert.ok(alive(pid), '原实例仍活着');
+
+						await second.picker.close({ terminate: true });
+						assert.ok(alive(pid), '断开接管不能杀掉对方的浏览器');
+
+						const again = await owner.picker.launch({ browser: 'ego', url: base + '/a' });
+						assert.equal(again.status, 'ready', '原实例仍可继续使用');
+					});
+				} finally {
+					await teardown(second.picker, second.dir);
+					await teardown(owner.picker, owner.dir);
+				}
+			});
+		} else {
+			test('ego 复用用例跳过：这台机器没装 ego lite', { skip: true }, () => {});
+		}
+	}
+
+	if (installed.includes('ego')) {
+		// 回归用例：ego lite 收到 --start-maximized 时会把窗口建成 1×1 —— Dock 里有图标、
+		// 屏幕上却换不出一扇窗（2026-11-22 用户实测）。这条断言盯的是窗口的可读尺寸，
+		// 换成别的开关写法也会被它抓住，而不是只盯某个参数名。
+		test('ego lite：启动出来的窗口有可用尺寸（不是 1×1）', async () => {
 			const { dir, picker } = makePicker();
 			try {
 				await withServer(async (base) => {
-					await picker.launch({ browser, cwd: dir, url: base + '/cookie' });
-					await evaluateEventually(
-						picker,
-						'document.cookie',
-						(value) => /scope=canvas/.test(String(value)),
-						'默认空间拿到 cookie',
+					await picker.launch({ browser: 'ego', cwd: dir, url: base + '/a' });
+					const { bounds } = await picker.cdp.send('Browser.getWindowForTarget', {
+						targetId: picker.activeTargetId,
+					});
+					assert.ok(
+						bounds.width > 200 && bounds.height > 200,
+						'窗口尺寸应能真正显示内容，实际是 ' + JSON.stringify(bounds),
 					);
-
-					// 启动后落在哪个空间，cookie 就归哪个空间：ego 会径直进「agent 空间」，
-					// Chrome/Edge 是默认空间。基线一律取当前状态，别假设是哪一个。
-					const home = picker.snapshot().space;
-					const before = picker.snapshot().spaces.length;
-					const created = await picker.createSpace({ url: base + '/plain' });
-					assert.equal(created.spaces.length, before + 1, '新建后多一个空间');
-					assert.equal(created.space.length > 8, true, '应切到新空间');
-					assert.equal(created.tabs.length, 1, '标签条只列当前空间的页面');
-					assert.doesNotMatch(
-						String(await evaluate(picker, 'document.cookie')),
-						/scope=canvas/,
-						'新空间不应看到默认空间的 cookie',
-					);
-					await evaluateEventually(
-						picker,
-						'!!document.getElementById("' + OVERLAY_ROOT + '")',
-						(value) => value === true,
-						'新空间里拾取层同样注入',
-					);
-
-					const back = await picker.useSpace(home);
-					assert.equal(back.space, home);
-					await evaluateEventually(
-						picker,
-						'document.cookie',
-						(value) => /scope=canvas/.test(String(value)),
-						'切回原空间 cookie 仍在',
-					);
-
-					const closed = await picker.closeSpace(created.space);
-					assert.equal(closed.spaces.length, before, '关闭后空间数回到基线');
-					assert.notEqual(closed.space, created.space, '应离开被销毁的空间');
 				});
 			} finally {
 				await teardown(picker, dir);
 			}
 		});
-	}
-
-	if (installed.includes('ego')) {
-		// 只用我们自己 spawn 的实例做接管对象：用户日常开着的 ego 里有他的标签与登录态，
-		// 用例不该往那儿建空间。第二个 picker 只认这一个端点，也避免跑到别人的浏览器里。
-		const owner = makePicker();
-		const second = makePicker({ adoptRunning: true });
-		test('ego：接管已运行的实例，在其中开自己的空间且不抢对方的浏览器', async () => {
-			try {
-				await withServer(async (base) => {
-					await owner.picker.launch({ browser: 'ego', cwd: owner.dir, url: base + '/a' });
-					const pid = owner.picker.proc?.pid;
-					assert.ok(pid, '第一个实例应是我们自己 spawn 的');
-
-					// 端口是随机分配的（--remote-debugging-port=0），浏览器把端口写进
-					// profile 的 DevToolsActivePort；profile 目录由 picker 自己算出。
-					const profileDir = owner.picker.windowProfileDir;
-					assert.ok(profileDir, 'spawn 之后应记下 profile 目录');
-					const port = await waitForPort(path.join(profileDir, 'DevToolsActivePort'));
-					second.picker.egoEndpoints = () => ['http://127.0.0.1:' + port];
-
-					const attached = await second.picker.launch({ browser: 'ego', cwd: second.dir, url: base + '/b' });
-					assert.equal(attached.status, 'ready');
-					assert.equal(attached.reused, true, '应接管已运行的实例，而不是再起一个');
-					assert.equal(attached.resumed, true);
-					assert.equal(second.picker.proc, null, '接管时我们不持有进程');
-					assert.ok(attached.space, '应切到自己的 agent 空间');
-					assert.ok(alive(pid), '原实例仍活着');
-
-					await second.picker.close({ terminate: true });
-					assert.ok(alive(pid), '断开接管不能杀掉对方的浏览器');
-
-					const again = await owner.picker.launch({ browser: 'ego', url: base + '/a' });
-					assert.equal(again.status, 'ready', '原实例仍可继续使用');
-				});
-			} finally {
-				await teardown(second.picker, second.dir);
-				await teardown(owner.picker, owner.dir);
-			}
-		});
-	} else {
-		test('ego 复用用例跳过：这台机器没装 ego lite', { skip: true }, () => {});
 	}
 
 	if (installed.length >= 2) {

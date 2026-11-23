@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import {
-	EGO_AGENT_SPACE_NAME,
-	isEgoBrowserCommand,
-	isEgoOnboardingTarget,
-	listeningPortsByPid,
-} from '../lib/shared/ego.js';
+import { isEgoBrowserCommand, isEgoOnboardingTarget, listeningPortsByPid } from '../lib/shared/ego.js';
 
 test('only the onboarding window counts as the ego guide', () => {
 	assert.equal(isEgoOnboardingTarget({ type: 'browser_ui', url: 'chrome://onboarding/' }), true);
@@ -60,8 +55,4 @@ test('the lsof field output maps each pid to its listening ports', () => {
 	// 没有监听端口（进程刚退出）时返回空 Map，而不是抛。
 	assert.equal(listeningPortsByPid('').size, 0);
 	assert.equal(listeningPortsByPid(undefined).size, 0);
-});
-
-test('the agent space keeps a stable name', () => {
-	assert.equal(EGO_AGENT_SPACE_NAME, 'agent 空间');
 });

@@ -2,6 +2,21 @@
 
 本文件记录 dsh-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.9.0] - 2026-11-23
+
+### Removed
+
+- **ego lite 不再有「空间」这一层**：空间原本是给 ego lite 专用的独立 BrowserContext（/space 路由 + 面板「空间」一行 + lib/shared/spaces.js），用来自动把调试页开进名为「agent 空间」的 context，避免和用户那一屏混在一起。实际用下来这一层只带来复杂度与「打开的 ego-lite 没有空间了」这样的困惑：ego lite 现在和 Chrome / Edge 一样，启动/接管后直接在那扇窗口里按地址开页。随之删除：lib/session.js 的 spaces / defaultContextId / activeSpace 状态、_syncSpaces / createSpace / useSpace / closeSpace / _ensureAgentSpace 与 spaces-<浏览器>.json 落盘，/state 的 spaces / space / spaceName 字段，/space 路由，面板空间选择器，lib/shared/spaces.js 与其单测，以及 tab.contextId（标签条不再按 context 过滤）。
+
+### Changed
+
+- **标签条就是那个窗口里的全部页面**：三个浏览器同一口径，不再有「默认空间 / 其他空间」之分，也就不会因为认错 context id 而把真页面从标签条里筛掉（2026-11-18 那条 0 !== 1 的成因）。
+- 契约版本：面板 HOST_REV / PANEL_BUILD 升到 v65（面板脚本变了，GUI 需强拉新脚本）；注入载荷 REV 不变（拾取层没改）。
+
+### Fixed
+
+- **ego lite 的窗口不再缩成 1×1**：切到 ego lite 后浏览器进程明明起来了、Dock 里也有图标，屏幕上却换不出一扇窗——`Browser.getWindowForTarget` 报回来的窗口是 `{"left":0,"top":33,"width":1,"height":1}`。原因是 ego lite（0.6.3.17 / Chromium 156，macOS）不认 `--start-maximized`：带它启动会把窗口建成 1×1，不带时是 1200×801，显式 `--window-size` 则正常（1440×900 会被工作区夹到 1440×845）。于是窗口开关从 `session.js` 的私有方法下沉成 `lib/shared/browsers.js` 的 `windowArgs(browserId, env)`：ego 单独走 `--window-size=1440,900`，Chrome/Edge 仍然是 `--start-maximized`，`DSH_VISUAL_ANNOTATOR_WINDOW` 对三者一视同仁。已在被写坏的 profile 上验证：显式尺寸能覆盖坏掉的 `browser.window_placement`，不用清 profile。回归用例两处：单测盯参数选择，真浏览器用例盯窗口实际尺寸（>200×200），换成别的开关写法也会被抓住。
+
 ## [0.8.0] - 2026-11-22
 
 ### Added

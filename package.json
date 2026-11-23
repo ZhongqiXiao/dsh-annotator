@@ -1,6 +1,6 @@
 {
 	"name": "dsh-annotator",
-	"version": "0.8.0",
+	"version": "0.9.0",
 	"description": "Visual element picker for DSH: highlight, annotate, comment and screenshot elements of a real Chrome/Edge page, then hand the selector + comment + shot to the agent.",
 	"type": "module",
 	"main": "./lib/index.js",
@@ -38,7 +38,7 @@
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js && node --check lib/shared/binding-action.js && node --check lib/shared/pick-actions.js && node --check lib/shared/auto-pick.js && node --check lib/shared/scratch-dir.js && node --check lib/shared/tool-schema.js && node --check lib/shared/cdp-endpoint.js && node --check lib/shared/browsers.js && node --check lib/shared/spaces.js && node --check lib/shared/ego.js && node --check lib/shared/tabs.js && node --check lib/shared/url.js && node --check lib/shared/host-rev.js && node --check lib/shared/embedded-runtime.js && node --check scripts/check-build-sync.mjs && node --check scripts/check-embedded-runtime.mjs && node --check scripts/canary-gates.mjs && node --check scripts/assess-ai-native.mjs && node --check scripts/mutation-suite.mjs && node --check scripts/gate-doctor.mjs && node --check hooks/verify-before-finish.mjs && node --check scripts/run-e2e.mjs",
+		"check": "node --check lib/index.js && node --check lib/session.js && node --check lib/cdp.js && node --check lib/client.js && node --check lib/overlay.js && node --check lib/shared/gui-page.js && node --check lib/shared/binding-action.js && node --check lib/shared/pick-actions.js && node --check lib/shared/auto-pick.js && node --check lib/shared/scratch-dir.js && node --check lib/shared/tool-schema.js && node --check lib/shared/cdp-endpoint.js && node --check lib/shared/browsers.js && node --check lib/shared/ego.js && node --check lib/shared/tabs.js && node --check lib/shared/url.js && node --check lib/shared/host-rev.js && node --check lib/shared/embedded-runtime.js && node --check scripts/check-build-sync.mjs && node --check scripts/check-embedded-runtime.mjs && node --check scripts/canary-gates.mjs && node --check scripts/assess-ai-native.mjs && node --check scripts/mutation-suite.mjs && node --check scripts/gate-doctor.mjs && node --check hooks/verify-before-finish.mjs && node --check scripts/run-e2e.mjs",
 		"gates": "node scripts/check-build-sync.mjs && node scripts/check-embedded-runtime.mjs && node scripts/gate-doctor.mjs",
 		"gate:doctor": "node scripts/gate-doctor.mjs",
 		"gate:live": "node scripts/gate-doctor.mjs --live",

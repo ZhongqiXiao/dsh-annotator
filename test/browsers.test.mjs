@@ -13,6 +13,8 @@ import {
 	normalizeBrowserId,
 	parseExtraArgs,
 	shouldTrySandboxFallback,
+	WINDOW_ENV,
+	windowArgs,
 } from '../lib/shared/browsers.js';
 
 test('the registry covers chrome, edge and ego lite in that order', () => {
@@ -105,4 +107,25 @@ test('availableBrowserIds keeps registry order and drops missing entries', () =>
 	assert.deepEqual(availableBrowserIds(undefined), []);
 	// A null path means "not installed" even though the key exists.
 	assert.deepEqual(availableBrowserIds({ chrome: null, ego: '' }), []);
+});
+
+test('ego lite 不跟着 Chrome 走 --start-maximized（那会让它的窗口变成 1×1）', () => {
+	// 实测 ego lite 0.6.3.17：带 --start-maximized 启动，Browser.getWindowForTarget
+	// 报 width/height = 1 —— Dock 有图标但看不见窗口。显式尺寸才正常。
+	assert.deepEqual(windowArgs('ego', {}), ['--window-size=1440,900']);
+	assert.deepEqual(windowArgs('chrome', {}), ['--start-maximized']);
+	assert.deepEqual(windowArgs('edge', {}), ['--start-maximized']);
+	// 未知 id 与缺省一样，按 Chrome 处理（老载荷只发 url 时走的就是这条）。
+	assert.deepEqual(windowArgs(undefined, {}), ['--start-maximized']);
+});
+
+test('窗口尺寸可以用 ' + WINDOW_ENV + ' 覆盖，三个浏览器一视同仁', () => {
+	assert.deepEqual(windowArgs('ego', { [WINDOW_ENV]: '1600x1000' }), ['--window-size=1600,1000']);
+	assert.deepEqual(windowArgs('chrome', { [WINDOW_ENV]: '1600x1000' }), ['--window-size=1600,1000']);
+	// 逗号写法与 x 写法都收，Chromium 只认逗号。
+	assert.deepEqual(windowArgs('chrome', { [WINDOW_ENV]: '1600,1000' }), ['--window-size=1600,1000']);
+	// 不合法的值当作没设，别把一个乱码当成尺寸塞给浏览器。
+	assert.deepEqual(windowArgs('ego', { [WINDOW_ENV]: 'big' }), ['--window-size=1440,900']);
+	assert.deepEqual(windowArgs('chrome', { [WINDOW_ENV]: '1440' }), ['--start-maximized']);
+	assert.deepEqual(windowArgs('chrome', { [WINDOW_ENV]: '    ' }), ['--start-maximized']);
 });
