@@ -2,7 +2,7 @@
 
 本文件记录 dsh-annotator 的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-## [未发布]
+## [0.9.0] - 2026-11-23
 
 ### Removed
 
